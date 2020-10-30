@@ -37,8 +37,8 @@ if args.cuda:
 '''
 #parameters setting
 filepath = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\'
-learning_rate = 0.005
-weight_decay = 0.005
+learning_rate = 0.0004
+weight_decay = 0.009
 k = 10
 epochs = 100
 criterion = nn.BCEWithLogitsLoss()
@@ -67,17 +67,26 @@ for i in range(k):
     print("\n")
     print("**************************")
     print(str(i+1)+"th training: the number of validation is:"+str(len(valid_data[i])))
-    print("train_data:")
-    print(train_data[i])
-    print("valid_data")
-    print(valid_data[i])
+    #print("train_data:")
+    #print(train_data[i])
+    #print("valid_data")
+    #print(valid_data[i])
     mask = np.ones((nc_num,pr_num)) #实际观测到的邻接矩阵的mask
     mask[valid_data[i][:,0],valid_data[i][:,1]] = 0 #将验证集中的样本置0
     A = np.zeros((pr_num + nc_num, pr_num + nc_num))
     tmp = NPI*mask
-    A[pr_num:, :pr_num] = tmp
-    A[:pr_num, pr_num:] = tmp.T
+    A[:nc_num, nc_num:] = tmp
+    A[nc_num:, :nc_num] = tmp.T
     adj = torch.from_numpy(normalization(A)).float()
+    '''
+    X = np.zeros((pr_num+nc_num,pr_num+nc_num))
+    X[:nc_num,nc_num:] = tmp/tmp.sum(axis=1).reshape(-1,1)
+    X[nc_num:,:nc_num] = tmp.T/tmp.T.sum(axis=1).reshape(-1,1)
+    X[X== float('inf')] = 0
+    X = torch.from_numpy(X).float()
+    
+    '''
+
     #index = A.nonzero()
     #adj = sp.coo_matrix((np.ones(len(index[0])), (index[0], index[1])),
     #                     shape=(A.shape[0],A.shape[1]),
@@ -96,32 +105,59 @@ for i in range(k):
     unobeserved = np.concatenate((unobeserved,valid_data[i]),axis=0) #本次循环中未观测到的样本为实际未观测到的和验证集中样本之和
     print()
 
-    model.train()
+
     for j in range(epochs):
         print(str(j+1)+"th epoch")
+        model.train()
         optimizer.zero_grad()
         protein, ncRNA, logits = model.forward(pr_X = pr3mer, RNA_X = RNA4mer, adj = adj, samples = train_data[i])
+        #protein, ncRNA, logits = model.forward(X, adj=adj, samples=train_data[i])
         train_loss = criterion(logits,torch.from_numpy(label))
+        pred = torch.sigmoid(logits).detach()
         train_loss.backward()
         optimizer.step()
         print("label:")
         print(label)
         print("train prediction:")
-        print(torch.sigmoid(logits).detach())
-        print("loss:{}".format(train_loss))
+        print(pred)
+
+        pred[pred>=0.7] = 1
+        pred[pred<0.7] =0
+        train_acc = accuracy(pred, label)
+        train_pre = precision(pred, label)
+        train_rec = recall(pred, label)
+        train_fpr = FPR(pred, label)
+        train_tpr = TPR(pred, label)
+        printN(pred, label)
+        print('Train - Loss: {},acc:{},precision:{},recall:{},FPR:{},TPR:{}'.format(train_loss, train_acc, train_pre,
+                                                                                           train_rec,train_fpr,train_tpr))
+
+
     #验证
         if (j+1)%5==0:
             model.eval()
             with torch.no_grad():
                 valid_protein, valid_ncRNA, valid_logits = model.forward(pr3mer,RNA4mer, adj, samples= unobeserved[:,:-1])
+                valid_label = torch.from_numpy(unobeserved[:, 2])
+                valid_loss = criterion(valid_logits,valid_label)
+                valid_pred = torch.sigmoid(valid_logits).detach()
+
                 print("**************************")
                 print("label:")
-                print(unobeserved[:,2])
+                print(valid_label.reshape(2,-1))
                 print("valid prediction:")
-                print(torch.sigmoid(valid_logits).reshape(2,-1).detach())
-                valid_loss = criterion(valid_logits, torch.from_numpy(unobeserved[:,2]))
-                print("valid loss:")
-                print(valid_loss)
+                print(valid_pred.reshape(2,-1))
+
+                valid_pred[valid_pred >= 0.7] = 1
+                valid_pred[valid_pred < 0.7] = 0
+                valid_acc = accuracy(valid_pred, valid_label)
+                valid_pre = precision(valid_pred, valid_label)
+                valid_rec = recall(valid_pred, valid_label)
+                valid_fpr = FPR(valid_pred, valid_label)
+                valid_tpr = TPR(valid_pred, valid_label)
+                printN(valid_pred, valid_label)
+                print('Train - Loss: {},acc:{},precision:{},recall:{},FPR:{},TPR:{}'.format(valid_loss, valid_acc,
+                                                                                        valid_pre,train_rec, valid_fpr,valid_tpr))
                 print("**************************")
 
 print("Total time elapsed: {:.4f}s".format(time.time() - t_total))

@@ -3,6 +3,7 @@ import scipy.sparse as sp
 import torch
 from sklearn.model_selection import StratifiedKFold
 import pandas as pd
+import random
 
 def sparse_normalization(adj):
     '''计算对称的拉普拉斯矩阵'''
@@ -16,6 +17,8 @@ def normalization(adj):
     degree = A.sum(axis=1)
     D = np.diag(np.power(degree,-0.5))
     return np.dot(np.dot(D,A),D)
+
+#def cal_Gassuian_Interaction_Profile():
 
 
 def load_NPInter(filepath):
@@ -52,7 +55,11 @@ def get_k_fold_data(k, positive):
     postivie/negative(numpy.ndarray)
     n_ratio:the ratio of negative samples
     '''
+    random.shuffle(positive)
     data = pd.DataFrame(positive)
+    data = data.values
+    data = pd.DataFrame(data)
+    data.to_csv("C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\shuffle.csv",index=False)
     data = data.values
     X,y = data, data[:,-1]
     sfolder = StratifiedKFold(n_splits = k, shuffle=True, random_state=1)
@@ -66,11 +73,75 @@ def get_k_fold_data(k, positive):
     return train_data, test_data
 
 
-def accuracy(output, labels):
-    preds = output.max(1)[1].type_as(labels)
-    correct = preds.eq(labels).double()
-    correct = correct.sum()
-    return correct / len(labels)
+def true_positive(pred, target):
+    return torch.tensor(((pred == 1) & (target == 1)).sum())
+
+def true_negative(pred, target):
+    return torch.tensor(((pred == 0) & (target == 0)).sum())
+
+def false_positive(pred, target):
+    return torch.tensor(((pred == 1) & (target == 0)).sum())
+
+
+def false_negative(pred, target):
+    return torch.tensor(((pred == 0) & (target == 1)).sum())
+
+
+def precision(pred, target):
+    tp = true_positive(pred, target).to(torch.float)
+    fp = false_positive(pred, target).to(torch.float)
+
+    out = tp / (tp + fp)
+    out[torch.isnan(out)] = 0
+
+    return out
+
+
+def recall(pred, target):
+    tp = true_positive(pred, target).to(torch.float)
+    fn = false_negative(pred, target).to(torch.float)
+
+    out = tp / (tp + fn)
+    out[torch.isnan(out)] = 0
+
+    return out
+
+
+def accuracy(pred, target):
+    tp = true_positive(pred, target).to(torch.float)
+    tn = true_negative(pred, target).to(torch.float)
+    fp = false_positive(pred, target).to(torch.float)
+    fn = false_negative(pred, target).to(torch.float)
+    out = (tp+tn)/(tp+tn+fn+fp)
+    out[torch.isnan(out)]=0
+
+    return out
+
+def FPR(pred,target):
+    fp = false_positive(pred, target).to(torch.float)
+    tn = true_negative(pred, target).to(torch.float)
+    out = fp/(fp+tn)
+    out[torch.isnan(out)]=0
+    return out
+
+
+def TPR(pred, target):
+    tp = true_positive(pred, target).to(torch.float)
+    fn = false_negative(pred, target).to(torch.float)
+    out = tp/(tp+fn)
+    out[torch.isnan(out)]=0
+    return out
+
+def printN(pred, target):
+    TP = true_positive(pred, target)
+    TN = true_negative(pred, target)
+    FP = false_positive(pred, target)
+    FN = false_negative(pred, target)
+    print("TN:{},TP:{},FP:{},FN:{}".format(TN, TP, FP, FN))
+
+#def AUC(pred, target):
+
+#def AUPR(pred, target):
 
 
 def sparse_mx_to_torch_sparse_tensor(sparse_mx):

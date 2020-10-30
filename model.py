@@ -56,7 +56,7 @@ class GraphConvolution(Module):
 
     def forward(self, input, adj):
         support = torch.mm(input, self.weight)
-        output = torch.spmm(adj, support)
+        output = torch.mm(adj, support)
         if self.bias is not None:
             return output + self.bias
         else:
@@ -98,29 +98,25 @@ class GCNAutoEncoder(nn.Module):
         self.Rr = Parameter(torch.FloatTensor(1, out_dim))
         self.pr_num = pr_num
         self.nc_num = nc_num
-    def reset_parameters(self):
         nn.init.xavier_uniform_(self.Rr, gain=nn.init.calculate_gain('relu'))
+
     def forward(self, pr_X, RNA_X, adj, samples):
         pr_X = self.linear(pr_X)
         X = torch.cat((RNA_X,pr_X), dim=0)
-        '''
-        print(X.shape)
-        print(max(samples[:,0]))
-        print(max(samples[:, 1]))
-        print(len(RNA_X))
-        '''
-        print("pr_X:")
-        print(pr_X)
-        print("RNA_x:")
-        print(RNA_X)
+
+        #print("pr_X:")
+        #print(pr_X)
+        #print("RNA_x:")
+        #print(RNA_X)
+
         embeding = self.encoder(X,adj)
         ncRNA = embeding[samples[:,0],:].clone()
-        protein = embeding[samples[:,1]+len(RNA_X),:].clone()
+        protein = embeding[samples[:,1]+self.nc_num,:].clone()
         logits = torch.sum(protein*self.Rr*ncRNA,dim=1)
         #print("ncRNA:")
         #print(ncRNA)
         #print("protein:")
         #print(protein)
-        print("relationship weight:")
-        print(self.Rr)
+        #print("relationship weight:")
+        #print(self.Rr)
         return protein, ncRNA, logits
