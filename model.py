@@ -41,9 +41,9 @@ class GraphConvolution(Module):
         super(GraphConvolution, self).__init__()
         self.in_features = in_features # 和X的节点特征的维度一样
         self.out_features = out_features #经过仿射变换的特征维度，也是最后节点的特征维度
-        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
         if bias:
-            self.bias = Parameter(torch.FloatTensor(out_features))
+            self.bias = nn.Parameter(torch.FloatTensor(out_features))
         else:
             self.register_parameter('bias', None)
         self.reset_parameters()
@@ -93,30 +93,24 @@ class GCNAutoEncoder(nn.Module):
         :param nc_num:RNA个数
         '''
         super(GCNAutoEncoder,self).__init__()
-        self.linear =  nn.Linear(in_dim,feat_dim)
+        self.linear =  nn.Linear(128,1)
         self.encoder = GCN(feat_dim,hidden_dim,out_dim,dropout_rate)
-        self.Rr = Parameter(torch.FloatTensor(1, out_dim))
+        self.Rr = nn.Parameter(torch.diag(torch.FloatTensor(out_dim)))
         self.pr_num = pr_num
         self.nc_num = nc_num
+        self.reset_parameters()
+
+    def reset_parameters(self):
         nn.init.xavier_uniform_(self.Rr, gain=nn.init.calculate_gain('relu'))
 
-    def forward(self, pr_X, RNA_X, adj, samples):
-        pr_X = self.linear(pr_X)
-        X = torch.cat((RNA_X,pr_X), dim=0)
-
-        #print("pr_X:")
-        #print(pr_X)
-        #print("RNA_x:")
-        #print(RNA_X)
-
-        embeding = self.encoder(X,adj)
-        ncRNA = embeding[samples[:,0],:].clone()
-        protein = embeding[samples[:,1]+self.nc_num,:].clone()
-        logits = torch.sum(protein*self.Rr*ncRNA,dim=1)
-        #print("ncRNA:")
-        #print(ncRNA)
-        #print("protein:")
-        #print(protein)
-        #print("relationship weight:")
-        #print(self.Rr)
-        return protein, ncRNA, logits
+    def forward(self, X, pr_X, ncRNA_X, adj, samples):
+        h = self.encoder(X,adj)
+        h_RNA = h[:self.nc_num,:]
+        h_pr = h[self.nc_num:,:]
+        RNA = h_RNA[samples[:,0]]
+        protein = h_pr[samples[:,1]]
+        emb = torch.cat((RNA,protein),axis=1)
+        logits= self.linear(emb)
+        #A_ = torch.mm(h_RNA,h_pr.T)
+        #logits = A_.flatten()
+        return logits

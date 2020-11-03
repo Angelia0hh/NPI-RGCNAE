@@ -20,7 +20,6 @@ def normalization(adj):
 
 #def cal_Gassuian_Interaction_Profile():
 
-
 def load_NPInter(filepath):
     print('Loading dataset...')
     NPInter = pd.read_table(filepath + 'raw_data\\NPInter10412_dataset.txt')
@@ -30,12 +29,18 @@ def load_NPInter(filepath):
     nc_num = len(ncRNA)
     NPI = np.zeros((nc_num, pr_num))
     positive_index= [] #相互作用对的下标[ncRNA_index,protein_index,label]
-    for index, row in NPInter.iterrows():
+    for ind, row in NPInter.iterrows():
         i = ncRNA.index(row['NONCODE-ID'])
         j = protein.index(row['UNIPROT-ID'])
         NPI[i, j] = 1
         positive_index.append([i,j,1])
 
+    name = ['index']
+    for i in range(256):
+        name.append(i + 1)
+    emb = pd.read_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\emb1.emd', header=None,sep=' ', names=name)
+    emb.sort_values('index', inplace=True)
+    emb = torch.FloatTensor(emb[list(range(1,257))].values)
     pr3mer = pd.read_csv(filepath+"generated_data\\Protein3merfeat.csv")
     RNA4mer = pd.read_csv(filepath+"generated_data\\ncRNA4merfeat.csv")
     pr3mer = torch.FloatTensor(pr3mer.values)
@@ -47,21 +52,20 @@ def load_NPInter(filepath):
     print("ncRNA feature shape:" + str(RNA4mer.shape))
     print("The number of observed samples:"+str(len(positive_index)))
 
-    return NPI, pr3mer, RNA4mer, protein, ncRNA, positive_index
+    return NPI, emb, pr3mer, RNA4mer, protein, ncRNA, positive_index
+
+'''
+def get_k_fold_data(k, edgelist):
 
 
-def get_k_fold_data(k, positive):
-    '''
-    postivie/negative(numpy.ndarray)
-    n_ratio:the ratio of negative samples
-    '''
-    random.shuffle(positive)
-    data = pd.DataFrame(positive)
-    data = data.values
-    data = pd.DataFrame(data)
-    data.to_csv("C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\shuffle.csv",index=False)
-    data = data.values
-    X,y = data, data[:,-1]
+    edgelist = edgelist.reindex(np.random.permutation(edgelist.index))
+    #random.shuffle(positive)
+    #data = pd.DataFrame(positive)
+    #data = data.values
+    #data = pd.DataFrame(data)
+    edgelist.to_csv("C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\shuffle.csv")
+    edgelist = edgelist.values
+    X,y = edgelist[:,:], edgelist[:,-1]
     sfolder = StratifiedKFold(n_splits = k, shuffle=True, random_state=1)
     train_data = []
     test_data = []
@@ -71,6 +75,32 @@ def get_k_fold_data(k, positive):
         #print('Train: %s | test: %s' % (X[train], X[test]))
         #print('label:%s|label:%s' % (y[train], y[test]))
     return train_data, test_data
+'''
+def get_k_fold_data(k, positive):
+    '''
+    postivie/negative(numpy.ndarray)
+    n_ratio:the ratio of negative samples
+    '''
+    positive = pd.DataFrame(positive)
+    data = positive.values
+    X,y = data[:,:], data[:,-1]
+    sfolder = StratifiedKFold(n_splits = k,shuffle=True,random_state=1)
+
+    train_data = []
+    test_data = []
+    train_label = []
+    test_label = []
+
+    for train, test in sfolder.split(X, y):
+        train_data.append(X[train])
+        test_data.append(X[test])
+        train_label.append(y[train])
+        test_label.append(y[test])
+        #print('Train: %s | test: %s' % (X[train], X[test]))
+        #print('label:%s|label:%s' % (y[train], y[test]))
+    return train_data, test_data
+
+
 
 
 def true_positive(pred, target):
@@ -152,3 +182,10 @@ def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     values = torch.from_numpy(sparse_mx.data).float()
     shape = torch.Size(sparse_mx.shape)
     return torch.sparse.FloatTensor(indices, values, shape)
+
+def top_K(k,pred):
+    y,index = pred.sort(descending=True)
+    y[:k] = 1
+    y[k:] = 0
+    return y,index
+
