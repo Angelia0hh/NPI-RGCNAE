@@ -101,8 +101,6 @@ def get_k_fold_data(k, positive):
     return train_data, test_data
 
 
-
-
 def true_positive(pred, target):
     return torch.tensor(((pred == 1) & (target == 1)).sum())
 
@@ -183,9 +181,13 @@ def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     shape = torch.Size(sparse_mx.shape)
     return torch.sparse.FloatTensor(indices, values, shape)
 
-def top_K(k,pred):
-    y,index = pred.sort(descending=True)
-    y[:k] = 1
-    y[k:] = 0
-    return y,index
+def top_M_and_N(M,N,pred):
+    #挑选分数最高的前M个作为预测的正样本
+    #挑选分数最低的后N个作为负样本
+    y,index = pred.sort(descending=True) #按照分数降序排序
+    y[:M] = 1
+    y[-N:] = 0
+    res = sorted(zip(index, y), key=lambda x: x[0], reverse=False)
+    index,y = zip(*res)
+    return torch.from_numpy(np.array(y))
 

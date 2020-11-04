@@ -7,13 +7,14 @@ import torch.nn.functional as F
 import pandas as pd
 from model2 import StackGCNEncoder, FullyConnected, Decoder
 from utils import *
+#torch.set_printoptions(suppress=True)
 
 ######hyper
 pr_num = 449
 nc_num = 4636
 DEVICE = torch.device('cpu')
 LEARNING_RATE = 1e-3
-EPOCHS = 100
+EPOCHS = 50
 NODE_INPUT_DIM = 5085
 SIDE_FEATURE_DIM = 343
 GCN_HIDDEN_DIM = 512
@@ -23,10 +24,7 @@ NUM_BASIS = 2
 DROPOUT_RATIO = 0.7
 WEIGHT_DACAY = 0.005
 ######hyper
-
-
 SCORES = torch.tensor([0,1]).to(DEVICE)
-
 
 def to_torch_sparse_tensor(x, device='cpu'):
     if not sp.isspmatrix_coo(x):
@@ -113,16 +111,36 @@ def load_dataset(filepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\'):
 
 def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
 protein_side_feature, RNA_side_feature, edgelist, model, criterion, optimizer):
+
+    valid_acc = []
+    valid_pre= []
+    valid_rec = []
+    valid_FPR = []
+    valid_TPR = []
+
     # 随机划分k折交叉验证
     train_data, test_data = get_k_fold_data(10, edgelist)
+
+    # 训练时计算所有的样本对的得分，但是只有训练集中的通过loss进行优化
+    RNA_indices = edgelist.values[:, 1]
+    protein_indices = edgelist.values[:, 2]
+    RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
+    protein_side_feature = tensor_from_numpy(protein_side_feature, DEVICE).float()
+    RNA_identity_feature = tensor_from_numpy(RNA_identity_feature, DEVICE).float()
+    protein_identity_feature = tensor_from_numpy(protein_identity_feature, DEVICE).float()
+    RNA_indices = tensor_from_numpy(RNA_indices, DEVICE).long()
+    protein_indices = tensor_from_numpy(protein_indices, DEVICE).long()
+
     for i in range(10):
-        print("This is the {}th cross validation ".format(i))
-        print("The number of train data is {}".format(len(train_data[i])))
-        print("The number of valid data is {}".format(len(test_data[i])))
-        print(train_data[i])
-        # 训练时计算所有的样本对的得分，但是只有训练集中的通过loss进行优化
-        RNA_indices = edgelist.values[:,1]
-        protein_indices = edgelist.values[:,2]
+        train_pos_num =  len(np.where(train_data[i][:,3]==1)[0])
+        train_neg_num = len(np.where(train_data[i][:,3]==-1)[0])
+        test_pos_num = len(np.where(test_data[i][:,3]==1)[0])
+        test_neg_num = len(np.where(test_data[i][:,3]==-1)[0])
+        print("This is the {}th cross validation ".format(i+1))
+        print("The number of train data is {},containing positive samples:{} and negative samples:{}"
+              .format(len(train_data[i]),train_pos_num,train_neg_num))
+        print("The number of valid data is {},containing positive samples:{} and negative samples:{}"
+              .format(len(test_data[i]),test_pos_num,test_neg_num))
 
         #edgelist一共四列：[index,RNA,protein,label]
         mask = np.ones((nc_num,pr_num))
@@ -141,12 +159,6 @@ protein_side_feature, RNA_side_feature, edgelist, model, criterion, optimizer):
         #将numpy.array 转为Tensor
         RNA2protein_adj= [to_torch_sparse_tensor(adj, DEVICE) for adj in RNA2protein_adj]
         protein2RNA_adj = [to_torch_sparse_tensor(adj, DEVICE) for adj in protein2RNA_adj]
-        RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
-        protein_side_feature = tensor_from_numpy(protein_side_feature, DEVICE).float()
-        RNA_identity_feature = tensor_from_numpy(RNA_identity_feature, DEVICE).float()
-        protein_identity_feature = tensor_from_numpy(protein_identity_feature, DEVICE).float()
-        RNA_indices = tensor_from_numpy(RNA_indices, DEVICE).long()
-        protein_indices = tensor_from_numpy(protein_indices, DEVICE).long()
         labels = tensor_from_numpy((train_data[i][:,3]+1)/2, DEVICE).long()
         train_mask = tensor_from_numpy(train_data[i][:,0], DEVICE)
 
@@ -154,19 +166,20 @@ protein_side_feature, RNA_side_feature, edgelist, model, criterion, optimizer):
                         RNA_identity_feature, protein_identity_feature,
                         RNA_side_feature, protein_side_feature,
                         RNA_indices, protein_indices, )
-
         model.train()
 
         for e in range(EPOCHS):
             logits = model(*model_inputs)
-            prob = F.softmax(logits, dim=1)
-            print("logits:")
-            print(logits)
-            print("prob:")
-            print(prob)
-            pred_y = torch.sum(prob * SCORES, dim=1)
+            prob = F.softmax(logits, dim=1).detach()
+            pred_y = torch.sum(prob * SCORES, dim=1).detach()
+            #y = top_M_and_N(train_pos_num,train_neg_num,pred_y) #所有的样本对对应的结果
+            print("The {}th training:".format(e+1))
             print("prediction:")
-            print(pred_y)
+            print(pred_y[train_mask])
+            pred_y[pred_y >= 0.7] = 1
+            pred_y[pred_y < 0.7] = 0
+            y = pred_y
+            print(pred_y[train_mask])
             print("label:")
             print(labels)
             loss = criterion(logits[train_mask], labels)
@@ -175,35 +188,64 @@ protein_side_feature, RNA_side_feature, edgelist, model, criterion, optimizer):
             loss.backward()  # 反向传播计算参数的梯度
             optimizer.step()  # 使用优化方法进行梯度更新
             print("Epoch {:03d}: Loss: {:.4f}, RMSE: {:.4f}".format(e, loss.item(), rmse.item()))
+            printN(y[train_mask],labels)
+            train_acc = accuracy(y[train_mask],labels)
+            train_pre = precision(y[train_mask],labels)
+            train_rec = recall(y[train_mask],labels)
+            train_FPR = FPR(y[train_mask],labels)
+            train_TPR = TPR(y[train_mask],labels)
+            print("accuracy:{}, precision:{}, recall:{}, FPR:{}, TPR:{}".
+                  format(train_acc,train_pre,train_rec,train_FPR,train_TPR))
+            print('\n')
+
+            #验证
             if (e + 1) % 10 == 0:
                 model.eval()
                 with torch.no_grad():
                     logits = model(*model_inputs)
                     test_labels = tensor_from_numpy((test_data[i][:, 3]+1)/2, DEVICE).long()
                     test_mask = tensor_from_numpy(test_data[i][:, 0], DEVICE)
+                    prob = F.softmax(logits, dim=1).detach()
+                    pred_y = torch.sum(prob * SCORES, dim=1).detach()
+                    #y = top_M_and_N(test_pos_num, test_neg_num, pred_y)
                     loss = criterion(logits[test_mask], test_labels)
                     rmse = expected_rmse(logits[test_mask], test_labels)
                     print("==========================")
-                    print('test')
-                    prob = F.softmax(logits, dim=1)
-                    print("logits:")
-                    print(logits)
-                    print("prob:")
-                    print(prob)
-                    pred_y = torch.sum(prob * SCORES, dim=1)
+                    print('validation')
                     print("prediction:")
-                    print(pred_y)
+                    print(pred_y[test_mask])
+                    pred_y[pred_y >= 0.7] = 1
+                    pred_y[pred_y < 0.7] = 0
+                    y = pred_y
+                    print(pred_y[test_mask])
                     print("label:")
-                    print(labels)
+                    print(test_labels)
                     print('Test On Epoch {}: loss: {:.4f}, Test rmse: {:.4f}'.format(e, loss.item(), rmse.item()))
+                    printN(y[test_mask], test_labels)
+                    test_acc = accuracy(y[test_mask], test_labels)
+                    test_pre = precision(y[test_mask], test_labels)
+                    test_rec = recall(y[test_mask], test_labels)
+                    test_FPR = FPR(y[test_mask], test_labels)
+                    test_TPR = TPR(y[test_mask], test_labels)
+                    print("accuracy:{}, precision:{}, recall:{}, FPR:{}, TPR:{}".
+                          format(test_acc, test_pre, test_rec, test_FPR, test_TPR))
                     print("==========================")
+                    print('\n')
+                    valid_acc.append(test_acc)
+                    valid_pre.append(test_pre)
+                    valid_rec.append(test_rec)
+                    valid_FPR.append(test_FPR)
+                    valid_TPR.append(test_TPR)
 
+    print("average accuracy:"+str(np.mean(valid_acc)))
+    print("average precision:" + str(np.mean(valid_pre)))
+    print("average recall:" + str(np.mean(valid_rec)))
+    print("average FPR:" + str(np.mean(valid_FPR)))
+    print("average TPR:" + str(np.mean(valid_TPR)))
 
 def expected_rmse(logits, label):
-    #true_y = label + 1  # 原来的评分为1~5，作为label时为0~4
     prob = F.softmax(logits, dim=1)
     pred_y = torch.sum(prob * SCORES, dim=1)
-
     diff = torch.pow(label - pred_y, 2)
 
     return torch.sqrt(diff.mean())
