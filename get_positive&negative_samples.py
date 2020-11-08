@@ -65,7 +65,12 @@ if __name__ == '__main__':
     '''
     Positives = pd.read_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\Positives.csv')
     Negatives = pd.read_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\Negatives.csv')
-    Negatives = Negatives[:(len(Positives))]#选取和正样本一样多的负样本
+    #Negatives = Negatives[:(len(Positives))]#按score升序选取和正样本一样多的负样本
+    #Negatives = Negatives.sample(n=len(Positives),random_state=1) #随机抽取负样本
+    #先按照分数取正样本两倍的负样本，再在其中抽取等量正样本
+    Negatives = Negatives[:len(Positives)*2]
+    Negatives = Negatives.sample(n=len(Positives), random_state=1)
+
     Negatives['label'] = -1
     edgelist = [Positives,Negatives]
     edgelist = pd.concat(edgelist,axis=0)
@@ -78,9 +83,9 @@ if __name__ == '__main__':
     NPI_pos = pd.DataFrame(NPI_pos)
     NPI_neg = pd.DataFrame(NPI_neg)
     NPI_pos.to_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPI_pos.csv',index=False, header=None)
-    NPI_neg.to_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPI_neg.csv', index=False, header=None)
-
-
+    #NPI_neg.to_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPI_neg.csv', index=False, header=None)
+    #NPI_neg.to_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPI_neg_random.csv', index=False, header=None)
+    NPI_neg.to_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPI_neg_selected_random.csv', index=False, header=None)
 
 
 

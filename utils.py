@@ -4,6 +4,7 @@ import torch
 from sklearn.model_selection import StratifiedKFold
 import pandas as pd
 import random
+from sklearn.metrics import roc_auc_score
 
 def sparse_normalization(adj):
     '''计算对称的拉普拉斯矩阵'''
@@ -17,6 +18,29 @@ def normalization(adj):
     degree = A.sum(axis=1)
     D = np.diag(np.power(degree,-0.5))
     return np.dot(np.dot(D,A),D)
+
+def globally_normalize_bipartite_adjacency(adjacencies, symmetric=True):
+    """ 传入的是邻接矩阵的集合，要在不同的关系矩阵上分别计算 """
+
+    row_sum = [np.sum(adj,axis=1) for adj in adjacencies]
+    col_sum = [np.sum(adj,axis=0) for adj in adjacencies]
+    #将为0的设置为无穷大，避免除0
+    for i in range(len((row_sum))):
+        row_sum[i][row_sum[i]==0] = np.inf
+        col_sum[i][col_sum[i]==0] = np.inf
+    degree_row_inv = [1./r for r in row_sum]
+    degree_row_inv_sqrt = [ 1./np.sqrt(r) for r in row_sum]
+    degree_col_inv_sqrt = [1./np.sqrt(c) for c in col_sum]
+    normalized_adj = []
+    if (symmetric==True):
+
+        for i, adj in enumerate(adjacencies):
+            normalized_adj.append(np.diag(degree_row_inv_sqrt[i]).dot(adj).dot(np.diag(degree_col_inv_sqrt[i])))
+    else:
+        for i,adj in enumerate(adjacencies):
+            normalized_adj.append(np.diag(degree_row_inv[i]).dot(adj))
+    return normalized_adj
+
 
 #def cal_Gassuian_Interaction_Profile():
 
@@ -76,13 +100,8 @@ def get_k_fold_data(k, edgelist):
         #print('label:%s|label:%s' % (y[train], y[test]))
     return train_data, test_data
 '''
-def get_k_fold_data(k, positive):
-    '''
-    postivie/negative(numpy.ndarray)
-    n_ratio:the ratio of negative samples
-    '''
-    positive = pd.DataFrame(positive)
-    data = positive.values
+def get_k_fold_data(k, data):
+    data = pd.DataFrame(data).values
     X,y = data[:,:], data[:,-1]
     sfolder = StratifiedKFold(n_splits = k,shuffle=True,random_state=1)
 
@@ -100,19 +119,21 @@ def get_k_fold_data(k, positive):
         #print('label:%s|label:%s' % (y[train], y[test]))
     return train_data, test_data
 
+def AUC(label,prob):
+    return roc_auc_score(label,prob)
 
 def true_positive(pred, target):
-    return torch.tensor(((pred == 1) & (target == 1)).sum())
+    return ((pred == 1) & (target == 1)).sum().clone().detach().requires_grad_(False)
 
 def true_negative(pred, target):
-    return torch.tensor(((pred == 0) & (target == 0)).sum())
+    return ((pred == 0) & (target == 0)).sum().clone().detach().requires_grad_(False)
 
 def false_positive(pred, target):
-    return torch.tensor(((pred == 1) & (target == 0)).sum())
+    return ((pred == 1) & (target == 0)).sum().clone().detach().requires_grad_(False)
 
 
 def false_negative(pred, target):
-    return torch.tensor(((pred == 0) & (target == 1)).sum())
+    return ((pred == 0) & (target == 1)).sum().clone().detach().requires_grad_(False)
 
 
 def precision(pred, target):

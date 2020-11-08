@@ -7,7 +7,7 @@ import torch.nn.init as init
 
 
 class StackGCNEncoder(nn.Module):
-    def __init__(self, input_dim, output_dim, num_support,
+    def __init__(self, input_dim, output_dim, num_support, layers, addloop, dropout,
                  use_bias=False, activation=F.relu):
         """对得到的每类评分使用级联的方式进行聚合
 
@@ -15,7 +15,7 @@ class StackGCNEncoder(nn.Module):
         ----
             input_dim (int): 输入的特征维度
             output_dim (int): 输出的特征维度，需要output_dim % num_support = 0
-            num_support (int): 评分的类别数，比如1~5分，值为5
+            num_support (int): 评分的类别数
             use_bias (bool, optional): 是否使用偏置. Defaults to False.
             activation (optional): 激活函数. Defaults to F.relu.
         """
@@ -26,60 +26,86 @@ class StackGCNEncoder(nn.Module):
         self.use_bias = use_bias
         self.activation = activation
         assert output_dim % num_support == 0
-        self.weight = nn.Parameter(torch.Tensor(num_support,
-                                                input_dim, output_dim // num_support))
+        self.drop = nn.Dropout(dropout)
+        #self.weight = nn.Parameter(torch.Tensor(num_support,
+        #                                        input_dim, output_dim // num_support))
+        self.addloop = addloop
+        if self.addloop:
+            self.self_weight = nn.Parameter(torch.Tensor(input_dim, output_dim))
+        self.layers = layers
+        self.weights = []
+        for i in range(self.layers):
+            self.weights.append(nn.Parameter(torch.Tensor(num_support,input_dim, output_dim // num_support)))
+            input_dim = output_dim
+
         if self.use_bias:
             self.bias = nn.Parameter(torch.Tensor(output_dim, ))
-            self.bias_item = nn.Parameter(torch.Tensor(output_dim, ))
+            self.bias_protein = nn.Parameter(torch.Tensor(output_dim, ))
         self.reset_parameters()
 
     def reset_parameters(self):
-        init.kaiming_uniform_(self.weight)
+        for weight in self.weights:
+            init.kaiming_uniform_(weight)
+        if self.addloop:
+            init.kaiming_uniform_(self.self_weight)
         if self.use_bias:
             init.zeros_(self.bias)
-            init.zeros_(self.bias_item)
+            init.zeros_(self.bias_protein)
 
-    def forward(self, user_supports, item_supports, user_inputs, item_inputs):
+    def forward(self, RNA_supports, protein_supports, RNA_inputs, protein_inputs):
         """StackGCNEncoder计算逻辑
 
         Args:
-            user_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的用户与商品邻接矩阵
-            item_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的商品与用户邻接矩阵
-            user_inputs (torch.Tensor): 用户特征的输入
-            item_inputs (torch.Tensor): 商品特征的输入
+            RNA_supports (list of torch.sparse.FloatTensor):
+                归一化后每个评分等级对应的RNA与protein邻接矩阵
+            protein_supports (list of torch.sparse.FloatTensor):
+                归一化后每个评分等级对应的protein与RNA邻接矩阵
+            RNA_inputs (torch.Tensor): RNA特征的输入
+            protein_inputs (torch.Tensor): protein特征的输入
 
         Returns:
-            [torch.Tensor]: 用户的隐层特征
-            [torch.Tensor]: 商品的隐层特征
+            [torch.Tensor]: RNA的隐层特征
+            [torch.Tensor]: protein的隐层特征
         """
-        assert len(user_supports) == len(item_supports) == self.num_support
-        user_hidden = []
-        item_hidden = []
-        for i in range(self.num_support):
-            tmp_u = torch.matmul(user_inputs, self.weight[i])
-            tmp_v = torch.matmul(item_inputs, self.weight[i])
-            tmp_user_hidden = torch.sparse.mm(user_supports[i], tmp_v)
-            tmp_item_hidden = torch.sparse.mm(item_supports[i], tmp_u)
-            user_hidden.append(tmp_user_hidden)
-            item_hidden.append(tmp_item_hidden)
+        assert len(RNA_supports) == len(protein_supports) == self.num_support
+        H_RNA = RNA_inputs
+        H_protein = protein_inputs
+        for l in range(self.layers):
+            RNA_hidden = []
+            protein_hidden = []
+            for i in range(self.num_support):
+                #在每个关系R上分别学习RNA和蛋白质的节点表示，先对同一类型的进行聚合
+                tmp_u = torch.matmul(H_RNA, self.weights[l][i])
+                tmp_v = torch.matmul(H_protein, self.weights[l][i])
+                tmp_RNA_hidden = torch.sparse.mm(RNA_supports[i], tmp_v)
+                tmp_protein_hidden = torch.sparse.mm(protein_supports[i], tmp_u)
+                RNA_hidden.append(tmp_RNA_hidden)
+                protein_hidden.append(tmp_protein_hidden)
+            #对不同类型的图学习到的节点特征进行聚合
+            RNA_hidden = torch.cat(RNA_hidden, dim=1)
+            protein_hidden = torch.cat(protein_hidden, dim=1)
+            if self.addloop:
+                # 加自连接
+                RNA_hidden = RNA_hidden + torch.matmul(RNA_inputs, self.self_weight)
+                protein_hidden = protein_hidden + torch.matmul(protein_inputs, self.self_weight)
 
-        user_hidden = torch.cat(user_hidden, dim=1)
-        item_hidden = torch.cat(item_hidden, dim=1)
+            RNA_hidden = self.drop(RNA_hidden)
+            protein_hidden = self.drop(protein_hidden)
+            RNA_outputs = self.activation(RNA_hidden)
+            protein_outputs = self.activation(protein_hidden)
 
-        user_outputs = self.activation(user_hidden)
-        item_outputs = self.activation(item_hidden)
+            if self.use_bias:
+                RNA_outputs += self.bias
+                protein_outputs += self.bias_protein
 
-        if self.use_bias:
-            user_outputs += self.bias
-            item_outputs += self.bias_item
+            H_RNA = RNA_outputs
+            H_protein = protein_outputs
 
-        return user_outputs, item_outputs
+        return H_RNA, H_protein
 
 
 class SumGCNEncoder(nn.Module):
-    def __init__(self, input_dim, output_dim, num_support,
+    def __init__(self, input_dim, output_dim, num_support,layers,dropout,addloop,
                  use_bias=False, activation=F.relu):
         """对得到的每类评分使用求和的方式进行聚合
 
@@ -96,54 +122,73 @@ class SumGCNEncoder(nn.Module):
         self.num_support = num_support
         self.use_bias = use_bias
         self.activation = activation
-        self.weight = nn.Parameter(torch.Tensor(
-            input_dim, output_dim * num_support))
+        self.dropout = nn.Dropout(dropout)
+        self.layers = layers
+        self.weights = []
+        for l in range(self.layers):
+            self.weights.append(nn.Parameter(torch.Tensor(2,input_dim, output_dim)))
+            input_dim = output_dim
+        if addloop:
+            self.W_loops = []
+            for l in range(self.layers):
+                self.W_loops.append(nn.Parameter(torch.Tensor(self.input_dim, output_dim)))
+                self.input_dim = output_dim
         if self.use_bias:
             self.bias = nn.Parameter(torch.Tensor(output_dim, ))
         self.reset_parameters()
-        self.weight = self.weight.view(input_dim, output_dim, 2)
+
 
     def reset_parameters(self):
-        init.kaiming_uniform_(self.weight)
+        #init.kaiming_uniform_(self.weight)
+        for l in range(len(self.weights)):
+            init.kaiming_uniform_(self.weights[l])
+            init.kaiming_uniform_(self.W_loops[l])
         if self.use_bias:
             init.zeros_(self.bias)
 
-    def forward(self, user_supports, item_supports, user_inputs, item_inputs):
+    def forward(self, RNA_supports, protein_supports, RNA_inputs, protein_inputs):
         """SumGCNEncoder计算逻辑
 
         Args:
-            user_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的用户与商品邻接矩阵
-            item_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的商品与用户邻接矩阵
-            user_inputs (torch.Tensor): 用户特征的输入
-            item_inputs (torch.Tensor): 商品特征的输入
+            RNA_supports (list of torch.sparse.FloatTensor):
+                归一化后每个评分等级对应的RNA与protein邻接矩阵
+            protein_supports (list of torch.sparse.FloatTensor):
+                归一化后每个评分等级对应的protein与RNA邻接矩阵
+            RNA_inputs (torch.Tensor): RNA特征的输入
+            protein_inputs (torch.Tensor): protein特征的输入
 
         Returns:
-            [torch.Tensor]: 用户的隐层特征
-            [torch.Tensor]: 商品的隐层特征
+            [torch.Tensor]: RNA的隐层特征
+            [torch.Tensor]: protein的隐层特征
         """
-        assert len(user_supports) == len(item_supports) == self.num_support
-        user_hidden = 0
-        item_hidden = 0
-        w = 0
-        for i in range(self.num_support):
-            w += self.weight[..., i]
-            tmp_u = torch.matmul(user_inputs, w)
-            tmp_v = torch.matmul(item_inputs, w)
-            tmp_user_hidden = torch.sparse.mm(user_supports[i], tmp_v)
-            tmp_item_hidden = torch.sparse.mm(item_supports[i], tmp_u)
-            user_hidden += tmp_user_hidden
-            item_hidden += tmp_item_hidden
+        assert len(RNA_supports) == len(protein_supports) == self.num_support
+        H_RNA = RNA_inputs
+        H_protein = protein_inputs
+        for l in range(self.layers):
+            RNA_hidden = 0
+            protein_hidden = 0
+            for i in range(self.num_support):
+                tmp_u = torch.matmul(H_RNA, self.weights[l][i])
+                tmp_v = torch.matmul(H_protein, self.weights[l][i])
+                tmp_RNA_hidden = torch.sparse.mm(RNA_supports[i], tmp_v)
+                tmp_protein_hidden = torch.sparse.mm(protein_supports[i], tmp_u)
+                RNA_hidden += tmp_RNA_hidden
+                protein_hidden += tmp_protein_hidden
+            RNA_hidden = RNA_hidden+ torch.matmul(H_RNA,self.W_loops[l])
+            protein_hidden = protein_hidden+torch.matmul(H_protein,self.W_loops[l])
 
-        user_outputs = self.activation(user_hidden)
-        item_outputs = self.activation(item_hidden)
+            protein_hidden = self.dropout(protein_hidden)
+            RNA_hidden = self.dropout(RNA_hidden)
 
-        if self.use_bias:
-            user_outputs += self.bias
-            item_outputs += self.bias_item
+            RNA_outputs = self.activation(RNA_hidden)
+            protein_outputs = self.activation(protein_hidden)
 
-        return user_outputs, item_outputs
+            if self.use_bias:
+                RNA_outputs += self.bias
+                protein_outputs += self.bias_protein
+            H_RNA = RNA_outputs
+            H_protein = protein_outputs
+        return H_RNA, H_protein
 
 
 class FullyConnected(nn.Module):
@@ -158,7 +203,7 @@ class FullyConnected(nn.Module):
             output_dim (int): 输出的特征维度，需要output_dim % num_support = 0
             use_bias (bool, optional): 是否使用偏置. Defaults to False.
             activation (optional): 激活函数. Defaults to F.relu.
-            share_weights (bool, optional): 用户和商品是否共享变换权值. Defaults to False.
+            share_weights (bool, optional): RNA和protein是否共享变换权值. Defaults to False.
 
         """
         super(FullyConnected, self).__init__()
@@ -167,35 +212,35 @@ class FullyConnected(nn.Module):
         self.use_bias = use_bias
         self.activation = activation
         self.share_weights = share_weights
-        self.linear_user = nn.Linear(input_dim, output_dim, bias=use_bias)
+        self.linear_RNA = nn.Linear(input_dim, output_dim, bias=use_bias)
         if self.share_weights:
-            self.linear_item = self.linear_user
+            self.linear_protein = self.linear_RNA
         else:
-            self.linear_item = nn.Linear(input_dim, output_dim, bias=use_bias)
+            self.linear_protein = nn.Linear(input_dim, output_dim, bias=use_bias)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, user_inputs, item_inputs):
+    def forward(self, RNA_inputs, protein_inputs):
         """前向传播
 
         Args:
-            user_inputs (torch.Tensor): 输入的用户特征
-            item_inputs (torch.Tensor): 输入的商品特征
+            RNA_inputs (torch.Tensor): 输入的RNA特征
+            protein_inputs (torch.Tensor): 输入的protein特征
 
         Returns:
-            [torch.Tensor]: 输出的用户特征
-            [torch.Tensor]: 输出的商品特征
+            [torch.Tensor]: 输出的RNA特征
+            [torch.Tensor]: 输出的protein特征
         """
-        user_inputs = self.dropout(user_inputs)
-        user_outputs = self.linear_user(user_inputs)
+        RNA_inputs = self.dropout(RNA_inputs)
+        RNA_outputs = self.linear_RNA(RNA_inputs)
 
-        item_inputs = self.dropout(item_inputs)
-        item_outputs = self.linear_item(item_inputs)
+        protein_inputs = self.dropout(protein_inputs)
+        protein_outputs = self.linear_protein(protein_inputs)
 
         if self.activation:
-            user_outputs = self.activation(user_outputs)
-            item_outputs = self.activation(item_outputs)
+            RNA_outputs = self.activation(RNA_outputs)
+            protein_outputs = self.activation(protein_outputs)
 
-        return user_outputs, item_outputs
+        return RNA_outputs, protein_outputs
 
 
 class Decoder(nn.Module):
@@ -206,7 +251,7 @@ class Decoder(nn.Module):
         ----
             input_dim (int): 输入的特征维度
             num_weights (int): basis weight number
-            num_classes (int): 总共的评分级别数，eg. 5
+            num_classes (int): 总共的评分级别数
         """
         super(Decoder, self).__init__()
         self.input_dim = input_dim
@@ -224,29 +269,29 @@ class Decoder(nn.Module):
         init.kaiming_uniform_(self.weight)
         init.kaiming_uniform_(self.weight_classifier)
 
-    def forward(self, user_inputs, item_inputs, user_indices, item_indices):
+    def forward(self, RNA_inputs, protein_inputs, RNA_indices, protein_indices):
         """计算非归一化的分类输出
 
         Args:
-            user_inputs (torch.Tensor): 用户的隐层特征
-            item_inputs (torch.Tensor): 商品的隐层特征
-            user_indices (torch.LongTensor):
-                所有交互行为中用户的id索引，与对应的item_indices构成一条边,shape=(num_edges, )
-            item_indices (torch.LongTensor):
-                所有交互行为中商品的id索引，与对应的user_indices构成一条边,shape=(num_edges, )
+            RNA_inputs (torch.Tensor): RNA的隐层特征
+            protein_inputs (torch.Tensor): protein的隐层特征
+            RNA_indices (torch.LongTensor):
+                所有交互行为中RNA的id索引，与对应的protein_indices构成一条边,shape=(num_edges, )
+            protein_indices (torch.LongTensor):
+                所有交互行为中protein的id索引，与对应的RNA_indices构成一条边,shape=(num_edges, )
 
         Returns:
             [torch.Tensor]: 未归一化的分类输出，shape=(num_edges, num_classes)
         """
-        user_inputs = self.dropout(user_inputs)
-        item_inputs = self.dropout(item_inputs)
-        user_inputs = user_inputs[user_indices]
-        item_inputs = item_inputs[item_indices]
+        RNA_inputs = self.dropout(RNA_inputs)
+        protein_inputs = self.dropout(protein_inputs)
+        RNA_inputs = RNA_inputs[RNA_indices]
+        protein_inputs = protein_inputs[protein_indices]
 
         basis_outputs = []
         for i in range(self.num_weights):
-            tmp = torch.matmul(user_inputs, self.weight[i])
-            out = torch.sum(tmp * item_inputs, dim=1, keepdim=True)
+            tmp = torch.matmul(RNA_inputs, self.weight[i])
+            out = torch.sum(tmp * protein_inputs, dim=1, keepdim=True)
             basis_outputs.append(out)
 
         basis_outputs = torch.cat(basis_outputs, dim=1)
