@@ -49,14 +49,16 @@ def read_fasta_file(fasta_file):
     i = 0
     for line in fp:
         # let's discard the newline at the end (if any)
-        line = line.rstrip()
+        line = line.rstrip().strip('*')
+        if line == '':
+            pass
         # distinguish header from sequence
-        if line[0] == '>':  # or line.startswith('>')
+        elif line[0] == '>':  # or line.startswith('>')
             if i == 0:
                 i += 1
             else:
-               allsequences.append(sequence)
-               sequence = ''
+                allsequences.append(sequence)
+                sequence = ''
         else:
             # it is sequence
             sequence += line
@@ -64,6 +66,7 @@ def read_fasta_file(fasta_file):
     fp.close()
     print(len(allsequences))
     return allsequences
+
 
 def s_w(seqA, allseq, savepath, num):
     #num 序列的index
@@ -114,27 +117,22 @@ def s_w(seqA, allseq, savepath, num):
         scorelist.append(finalscore)
     np.savetxt(savepath, scorelist, delimiter=',', fmt='%f')
 
-if __name__ == '__main__':
-    #path = 'C:\\Users\\zyk\\Desktop\\sw\\score\\'
 
-    filename = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\protein_extracted_seq.fasta'
+def generated_SW_matrix(filename,path):
     allsequence = read_fasta_file(filename)
-    #print(allsequence)
-
-    path = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\'
-    pool = multiprocessing.Pool(processes = multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     for i in range(len(allsequence)):
-        savepath = path + str(i+1) + '.txt'
+        savepath = path + str(i + 1) + '.txt'
         sequence1 = allsequence[i]
         sequence2 = allsequence[i:]
-        pool.apply_async(s_w, (sequence1,sequence2,savepath,i,))
+        pool.apply_async(s_w, (sequence1, sequence2, savepath, i,))
     pool.close()
     pool.join()
 
     scorematrix = []
     for i in range(len(allsequence)):
-        alignpath = path + str(i+1) + '.txt'
-        alignlist = pd.read_csv(alignpath,header=None,index_col=None)
+        alignpath = path + str(i + 1) + '.txt'
+        alignlist = pd.read_csv(alignpath, header=None, index_col=None)
         alignlist = np.array(alignlist)
         alignlist = alignlist.T
         scorematrix.append(alignlist[0])
@@ -142,4 +140,9 @@ if __name__ == '__main__':
     for j in range(finalmatrix.shape[1]):
         for i in range(finalmatrix.shape[0]):
             finalmatrix[i][j] = finalmatrix[j][i]
-    np.savetxt(os.path.join(path,r'protein sw_smilarity matrix.csv'), finalmatrix, delimiter=',', fmt='%f')
+    np.savetxt(os.path.join(path, r'protein sw_smilarity matrix.csv'), finalmatrix, delimiter=',', fmt='%f')
+    # np.savetxt(os.path.join(path, r'protein sw_test.csv'), finalmatrix, delimiter=',', fmt='%f')
+
+if __name__ == '__main__':
+    generated_SW_matrix(filename = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\protein_extracted_seq.fasta',
+                        path = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\')

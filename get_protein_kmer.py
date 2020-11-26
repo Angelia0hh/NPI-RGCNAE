@@ -12,20 +12,21 @@ def read_fasta_file(fasta_file):
     # pdb.set_trace()
     for line in fp:
         # let's discard the newline at the end (if any)
-        line = line.rstrip()
+        line = line.rstrip().strip('*')
+        if line == '':
+            pass
         # distinguish header from sequence
-        if line[0] == '>':  # or line.startswith('>')
+        elif line[0] == '>':  # or line.startswith('>')
             # it is the header
-            name = line[1:].upper()  # discarding the initial >
+            name = line[1:]  # discarding the initial >
             seq_dict[name] = ''
         else:
             # it is sequence
             seq_dict[name] = seq_dict[name] + line
     fp.close()
-    for key,value in seq_dict.items():
-        print(key)
-        print(value)
+
     print(len(seq_dict))
+
     return seq_dict
 
 def get_4_nucleotide_composition(tris, seq, pythoncount=True):
@@ -102,9 +103,9 @@ def get_k_protein_trids(k):
 
     return all_kmers
 
-if __name__ == '__main__':
+def generated_protein_kmer(fasta_file, savepath, k = 3):
     Protein3mer = []
-    protein_seq_dict = read_fasta_file('C:\\Users\\user\\Documents\\Tencent Files\\767831316\\FileRecv\\protein_extracted_seq.fasta')
+    protein_seq_dict = read_fasta_file(fasta_file)
     groups = ['AGV', 'ILFP', 'YMTS', 'HNQW', 'RK', 'DE', 'C']
     group_dict = TransDict_from_list(groups)
     protein_tris = get_k_protein_trids(3)
@@ -116,4 +117,32 @@ if __name__ == '__main__':
     Protein3mer = np.array(Protein3mer)
     print(Protein3mer.shape)
     Protein3mer = pd.DataFrame(Protein3mer)
-    Protein3mer.to_csv('C:\\Users\\user\\Desktop\\generate_data\\Protein3merfeat.csv', index=False)
+    Protein3mer.to_csv(savepath, index=False)
+
+if __name__ == '__main__':
+    '''
+    generated_protein_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_10412\\protein_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_10412\\Protein3merfeat.csv', k=3)
+    generated_protein_kmer(fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1807\\protein_extracted_seq.fasta',
+                           savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1807\\Protein3merfeat.csv', k = 3 )
+    
+    generated_protein_kmer(
+            fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI369\\protein_extracted_seq.fasta',
+            savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI369\\Protein3merfeat.csv', k=3)
+    
+    generated_protein_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\protein_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\Protein3merfeat.csv', k=3)
+    
+    generated_protein_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI7317\\protein_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI7317\\Protein3merfeat.csv', k=3)
+    
+    generated_protein_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI2241\\protein_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI2241\\Protein3merfeat.csv', k=3)
+    '''
+    generated_protein_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\protein_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\Protein3merfeat.csv', k=3)

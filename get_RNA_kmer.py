@@ -12,11 +12,11 @@ def read_fasta_file(fasta_file):
     # pdb.set_trace()
     for line in fp:
         # let's discard the newline at the end (if any)
-        line = line.rstrip()
+        line = line.rstrip().strip('*')
         # distinguish header from sequence
         if line[0] == '>':  # or line.startswith('>')
             # it is the header
-            name = line[1:].upper()  # discarding the initial >
+            name = line[1:] # discarding the initial >
             seq_dict[name] = ''
         else:
             # it is sequence
@@ -105,10 +105,11 @@ def get_k_ncRNA_trids(k):
 
     return all_kmers
 
-if __name__ == '__main__':
+
+def generated_RNA_kmer(fasta_file, savepath, k = 4):
     ncRNA4mer = []
-    ncRNA_seq_dict = read_fasta_file('C:\\Users\\user\\Documents\\Tencent Files\\767831316\\FileRecv\\ncRNA_extracted_seq.fasta')
-    groups = ['A','C','G','U']
+    ncRNA_seq_dict = read_fasta_file(fasta_file)
+    groups = ['A', 'C', 'G', 'U']
     group_dict = TransDict_from_list(groups)
     ncRNA_tris = get_k_ncRNA_trids(4)
 
@@ -117,6 +118,47 @@ if __name__ == '__main__':
         ncRNA_tri_fea = get_4_nucleotide_composition(ncRNA_tris, ncRNA_seq1, pythoncount=False)
         ncRNA4mer.append(ncRNA_tri_fea)
     ncRNA4mer = np.array(ncRNA4mer)
+    '''
+    a = np.zeros((1,256))
+    l = []
+    with open('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\ncRNA.txt','r') as f:
+        for line in f:
+            l.append(line.strip())
+
+    for i in ['YBL039W-A', 'YBL101W-A', 'YFL057C','YIR044C','YAR062W','YNL097C-A']:
+        position = l.index(i)
+        ncRNA4mer = np.insert(ncRNA4mer, position, values=a, axis=0)
+    '''
     print(ncRNA4mer.shape)
     ncRNA4mer = pd.DataFrame(ncRNA4mer)
-    ncRNA4mer.to_csv('C:\\Users\\user\\Desktop\\generate_data\\ncRNA4merfeat.csv', index=False)
+    ncRNA4mer.to_csv(savepath, index=False)
+
+
+if __name__ == '__main__':
+    '''
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_10412\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_10412\\ncRNA4merfeat.csv', k=4)
+
+    generated_RNA_kmer(fasta_file = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1807\\ncRNA_extracted_seq.fasta',
+                       savepath = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1807\\ncRNA4merfeat.csv' , k = 4)
+    
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI369\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI369\\ncRNA4merfeat.csv', k=4)
+    
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\ncRNA4merfeat.csv', k=4)
+    
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI7317\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI7317\\ncRNA4merfeat.csv', k=4)
+    
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI2241\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI2241\\ncRNA4merfeat.csv', k=4)
+    '''
+    generated_RNA_kmer(
+        fasta_file='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\ncRNA_extracted_seq.fasta',
+        savepath='C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\ncRNA4merfeat.csv', k=4)

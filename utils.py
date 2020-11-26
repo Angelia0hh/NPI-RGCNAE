@@ -5,105 +5,55 @@ from sklearn.model_selection import StratifiedKFold
 import pandas as pd
 import random
 from sklearn.metrics import roc_auc_score
+import math
 
-def sparse_normalization(adj):
-    '''计算对称的拉普拉斯矩阵'''
-    adj += sp.eye(adj.shape[0]) #增加自连接
-    degree = np.array(adj.sum(1)) #度矩阵
-    d_hat = sp.diags(np.power(degree, -0.5).flatten()) #建对角阵
-    return d_hat.dot(adj).dot(d_hat).tocoo()
+np.random.seed(1)
+random.seed(1)
 
-def normalization(adj):
-    A = adj + np.eye(adj.shape[0])
-    degree = A.sum(axis=1)
-    D = np.diag(np.power(degree,-0.5))
-    return np.dot(np.dot(D,A),D)
+def to_torch_sparse_tensor(x, device='cpu'):
+    if not sp.isspmatrix_coo(x):
+        x = sp.coo_matrix(x)
+    row, col = x.row, x.col
+    data = x.data
 
-def globally_normalize_bipartite_adjacency(adjacencies, symmetric=True):
+    indices = torch.from_numpy(np.asarray([row, col]).astype('int64')).long()
+    values = torch.from_numpy(data.astype(np.float32))
+    th_sparse_tensor = torch.sparse.FloatTensor(indices, values,
+                                                x.shape).to(device)
+
+    return th_sparse_tensor
+
+
+def tensor_from_numpy(x, device='cpu'):
+    return torch.from_numpy(x).to(device)
+
+
+def globally_normalize_bipartite_adjacency(adjacencies, symmetric=False):
     """ 传入的是邻接矩阵的集合，要在不同的关系矩阵上分别计算 """
 
-    row_sum = [np.sum(adj,axis=1) for adj in adjacencies]
-    col_sum = [np.sum(adj,axis=0) for adj in adjacencies]
-    #将为0的设置为无穷大，避免除0
-    for i in range(len((row_sum))):
-        row_sum[i][row_sum[i]==0] = np.inf
-        col_sum[i][col_sum[i]==0] = np.inf
+    row_sum = [np.sum(adj, axis=1) for adj in adjacencies]
+    col_sum = [np.sum(adj, axis=0) for adj in adjacencies]
+    # 将为0的设置为无穷大，避免除0
+    for i in range(len(row_sum)):
+        row_sum[i][row_sum[i] == 0] = np.inf
+        col_sum[i][col_sum[i] == 0] = np.inf
     degree_row_inv = [1./r for r in row_sum]
-    degree_row_inv_sqrt = [ 1./np.sqrt(r) for r in row_sum]
+    degree_row_inv_sqrt = [1./np.sqrt(r) for r in row_sum]
     degree_col_inv_sqrt = [1./np.sqrt(c) for c in col_sum]
     normalized_adj = []
-    if (symmetric==True):
-
+    if symmetric:
         for i, adj in enumerate(adjacencies):
             normalized_adj.append(np.diag(degree_row_inv_sqrt[i]).dot(adj).dot(np.diag(degree_col_inv_sqrt[i])))
     else:
-        for i,adj in enumerate(adjacencies):
+        for i, adj in enumerate(adjacencies):
             normalized_adj.append(np.diag(degree_row_inv[i]).dot(adj))
     return normalized_adj
 
 
-#def cal_Gassuian_Interaction_Profile():
-
-def load_NPInter(filepath):
-    print('Loading dataset...')
-    NPInter = pd.read_table(filepath + 'raw_data\\NPInter10412_dataset.txt')
-    protein = NPInter['UNIPROT-ID'].unique().tolist()#蛋白质列表
-    ncRNA = NPInter['NONCODE-ID'].unique().tolist()#RNA列表
-    pr_num = len(protein)
-    nc_num = len(ncRNA)
-    NPI = np.zeros((nc_num, pr_num))
-    positive_index= [] #相互作用对的下标[ncRNA_index,protein_index,label]
-    for ind, row in NPInter.iterrows():
-        i = ncRNA.index(row['NONCODE-ID'])
-        j = protein.index(row['UNIPROT-ID'])
-        NPI[i, j] = 1
-        positive_index.append([i,j,1])
-
-    name = ['index']
-    for i in range(256):
-        name.append(i + 1)
-    emb = pd.read_csv('C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\emb1.emd', header=None,sep=' ', names=name)
-    emb.sort_values('index', inplace=True)
-    emb = torch.FloatTensor(emb[list(range(1,257))].values)
-    pr3mer = pd.read_csv(filepath+"generated_data\\Protein3merfeat.csv")
-    RNA4mer = pd.read_csv(filepath+"generated_data\\ncRNA4merfeat.csv")
-    pr3mer = torch.FloatTensor(pr3mer.values)
-    RNA4mer = torch.FloatTensor(RNA4mer.values)
-
-    print("---------The dataset Information---------")
-    print("ncRNA: "+str(nc_num)+" protein:"+str(pr_num)+" ncRNA_protein interaction:"+str(len(positive_index)))
-    print("protein feature shape:"+str(pr3mer.shape))
-    print("ncRNA feature shape:" + str(RNA4mer.shape))
-    print("The number of observed samples:"+str(len(positive_index)))
-
-    return NPI, emb, pr3mer, RNA4mer, protein, ncRNA, positive_index
-
-'''
-def get_k_fold_data(k, edgelist):
-
-
-    edgelist = edgelist.reindex(np.random.permutation(edgelist.index))
-    #random.shuffle(positive)
-    #data = pd.DataFrame(positive)
-    #data = data.values
-    #data = pd.DataFrame(data)
-    edgelist.to_csv("C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\shuffle.csv")
-    edgelist = edgelist.values
-    X,y = edgelist[:,:], edgelist[:,-1]
-    sfolder = StratifiedKFold(n_splits = k, shuffle=True, random_state=1)
-    train_data = []
-    test_data = []
-    for train, test in sfolder.split(X, y):
-        train_data.append(X[train])
-        test_data.append(X[test])
-        #print('Train: %s | test: %s' % (X[train], X[test]))
-        #print('label:%s|label:%s' % (y[train], y[test]))
-    return train_data, test_data
-'''
 def get_k_fold_data(k, data):
-    data = pd.DataFrame(data).values
-    X,y = data[:,:], data[:,-1]
-    sfolder = StratifiedKFold(n_splits = k,shuffle=True,random_state=1)
+    data = data.values
+    X, y = data[:, :], data[:, -1]
+    sfolder = StratifiedKFold(n_splits = k, shuffle=True,random_state=1)
 
     train_data = []
     test_data = []
@@ -115,18 +65,25 @@ def get_k_fold_data(k, data):
         test_data.append(X[test])
         train_label.append(y[train])
         test_label.append(y[test])
-        #print('Train: %s | test: %s' % (X[train], X[test]))
-        #print('label:%s|label:%s' % (y[train], y[test]))
+
+        # print('Train: %s | test: %s' % (X[train], X[test]))
+        # print('label:%s|label:%s' % (y[train], y[test]))
+        #print(len(test))
+        #print(X[train][:-1,:])
     return train_data, test_data
 
-def AUC(label,prob):
-    return roc_auc_score(label,prob)
+
+def AUC(label, prob):
+    return roc_auc_score(label, prob)
+
 
 def true_positive(pred, target):
     return ((pred == 1) & (target == 1)).sum().clone().detach().requires_grad_(False)
 
+
 def true_negative(pred, target):
     return ((pred == 0) & (target == 0)).sum().clone().detach().requires_grad_(False)
+
 
 def false_positive(pred, target):
     return ((pred == 1) & (target == 0)).sum().clone().detach().requires_grad_(False)
@@ -146,7 +103,7 @@ def precision(pred, target):
     return out
 
 
-def recall(pred, target):
+def sensitivity(pred, target):
     tp = true_positive(pred, target).to(torch.float)
     fn = false_negative(pred, target).to(torch.float)
 
@@ -155,6 +112,26 @@ def recall(pred, target):
 
     return out
 
+def specificity(pred, target):
+    tn = true_negative(pred, target).to(torch.float)
+    fp = false_positive(pred, target).to(torch.float)
+
+    out = tn/(tn+fp)
+    out[torch.isnan(out)] = 0
+
+    return out
+
+
+def MCC(pred,target):
+    tp = true_positive(pred, target).to(torch.float)
+    tn = true_negative(pred, target).to(torch.float)
+    fp = false_positive(pred, target).to(torch.float)
+    fn = false_negative(pred, target).to(torch.float)
+
+    out = (tp*tn-fp*fn)/math.sqrt((tp+fp)*(tn+fn)*(tp+fn)*(tn+fp))
+    out[torch.isnan(out)] = 0
+
+    return out
 
 def accuracy(pred, target):
     tp = true_positive(pred, target).to(torch.float)
@@ -162,15 +139,16 @@ def accuracy(pred, target):
     fp = false_positive(pred, target).to(torch.float)
     fn = false_negative(pred, target).to(torch.float)
     out = (tp+tn)/(tp+tn+fn+fp)
-    out[torch.isnan(out)]=0
+    out[torch.isnan(out)] = 0
 
     return out
 
-def FPR(pred,target):
+
+def FPR(pred, target):
     fp = false_positive(pred, target).to(torch.float)
     tn = true_negative(pred, target).to(torch.float)
     out = fp/(fp+tn)
-    out[torch.isnan(out)]=0
+    out[torch.isnan(out)] = 0
     return out
 
 
@@ -178,8 +156,9 @@ def TPR(pred, target):
     tp = true_positive(pred, target).to(torch.float)
     fn = false_negative(pred, target).to(torch.float)
     out = tp/(tp+fn)
-    out[torch.isnan(out)]=0
+    out[torch.isnan(out)] = 0
     return out
+
 
 def printN(pred, target):
     TP = true_positive(pred, target)
@@ -188,27 +167,6 @@ def printN(pred, target):
     FN = false_negative(pred, target)
     print("TN:{},TP:{},FP:{},FN:{}".format(TN, TP, FP, FN))
 
-#def AUC(pred, target):
-
-#def AUPR(pred, target):
 
 
-def sparse_mx_to_torch_sparse_tensor(sparse_mx):
-    """Convert a scipy sparse matrix to a torch sparse tensor."""
-    sparse_mx = sparse_mx.tocoo()
-    indices = torch.from_numpy(
-        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
-    values = torch.from_numpy(sparse_mx.data).float()
-    shape = torch.Size(sparse_mx.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)
-
-def top_M_and_N(M,N,pred):
-    #挑选分数最高的前M个作为预测的正样本
-    #挑选分数最低的后N个作为负样本
-    y,index = pred.sort(descending=True) #按照分数降序排序
-    y[:M] = 1
-    y[-N:] = 0
-    res = sorted(zip(index, y), key=lambda x: x[0], reverse=False)
-    index,y = zip(*res)
-    return torch.from_numpy(np.array(y))
 
