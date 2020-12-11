@@ -4,7 +4,16 @@ import torch.nn.functional as F
 import scipy.sparse as sp
 import numpy as np
 import torch.nn.init as init
+import os
+import random
 
+random.seed(1)
+np.random.seed(1)
+os.environ['PYTHONHASHSEED'] = str(1)
+torch.manual_seed(1)
+torch.cuda.manual_seed(1)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 class StackGCNEncoder(nn.Module):
     def __init__(self, input_dim, output_dim, num_support, layers, addloop, dropout,
@@ -308,7 +317,6 @@ class Decoder(nn.Module):
         basis_outputs = torch.cat(basis_outputs, dim=1)
         outputs = torch.matmul(basis_outputs, self.weight_classifier)
         outputs = self.activation(outputs)
-        embeddings = torch.cat([RNA_inputs,protein_inputs],dim=1)
 
         return outputs
 
@@ -320,13 +328,15 @@ class GraphMatrixCompletion(nn.Module):
         super(GraphMatrixCompletion, self).__init__()
         self.use_side_feature = use_side_feature
         if accumulate_strategy =='stack':
-            self.encoder = StackGCNEncoder(input_dim, gcn_hidden_dim, num_support, layers, addloop=True, dropout=0.5)
+            self.encoder = StackGCNEncoder(input_dim, gcn_hidden_dim, num_support, layers, addloop=True, dropout=dropout)
         elif accumulate_strategy =='sum':
-            self.encoder = SumGCNEncoder(input_dim, gcn_hidden_dim, num_support, layers, addloop=True, dropout=0.5)
+            self.encoder = SumGCNEncoder(input_dim, gcn_hidden_dim, num_support, layers, addloop=True, dropout=dropout)
 
         if self.use_side_feature:
+            # 处理side_feature
             self.dense1 = FullyConnected(side_feat_dim, side_hidden_dim, dropout=0.,
                                      use_bias=True)
+            # 结合side_feature和embeddings
             self.dense2 = FullyConnected(gcn_hidden_dim + side_hidden_dim, encode_hidden_dim,
                                      dropout= dropout, activation=lambda x: x)
         else:
@@ -344,6 +354,10 @@ class GraphMatrixCompletion(nn.Module):
                 RNA_edge_idx, protein_edge_idx):
 
         RNA_gcn, protein_gcn = self.encoder(RNA_supports, protein_supports, RNA_inputs, protein_inputs)
+
+        embedding_RNA = RNA_gcn.detach().numpy()
+        embedding_protein = protein_gcn.detach().numpy()
+
         if self.use_side_feature:
             RNA_side_feat, protein_side_feat = self.dense1(RNA_side_inputs, protein_side_inputs)
 
@@ -357,4 +371,4 @@ class GraphMatrixCompletion(nn.Module):
 
         edge_logits = self.decoder(RNA_embed, protein_embed, RNA_edge_idx, protein_edge_idx)
 
-        return edge_logits
+        return edge_logits, embedding_protein, embedding_RNA

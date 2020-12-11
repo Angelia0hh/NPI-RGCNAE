@@ -390,39 +390,50 @@ def get_RPI1807(filepath, savepath):
 def get_RPI369(filepath, savepath):
     RPI369 = pd.read_table(filepath , header=None,
                            names=['protein', 'RNA', 'label'])
-    protein = list(set(RPI369['protein'].unique().tolist()))
-    ncRNA = list(set(RPI369['RNA'].unique().tolist()))
+    RPI369_pos = RPI369[RPI369['label']==1]
+    protein = RPI369_pos['protein'].unique().tolist()
+    ncRNA = RPI369_pos['RNA'].unique().tolist()
     positive_index = []  # 相互作用对的下标[ncRNA_index,protein_index,label]
-    negative_index = []
 
-    for index, row in RPI369.iterrows():
+    for index, row in RPI369_pos.iterrows():
         i = ncRNA.index(row['RNA'])
         j = protein.index(row['protein'])
-        if row['label'] == 1:
-            positive_index.append([i, j, 1])
-        else:
-            negative_index.append([i, j, -1])
+        positive_index.append([i, j])
+    print("RPI369:")
+    print("positive:" + str(len(positive_index)) + " RNA:" + str(len(ncRNA)) + " protein:" + str(len(protein)))
 
-    Positives = pd.DataFrame(positive_index, columns=['RNA', 'protein', 'label'])
-    Negatives = pd.DataFrame(negative_index, columns=['RNA', 'protein', 'label'])
-    Positives.to_csv(savepath + 'Positives.csv', index=False)
-    Negatives.to_csv(savepath + 'Negatives.csv', index=False)
-    edgelist = [Positives, Negatives]
-    edgelist = pd.concat(edgelist, axis=0)
-    edgelist = edgelist.reset_index(drop=True)
-    edgelist.to_csv(savepath + 'edgelist.csv', header=None)
-    edgelist['protein'] = edgelist['protein'] + len(ncRNA)
-    edgelist = edgelist[['RNA', 'protein']]
-    np.savetxt(savepath + 'graph.edgelist.txt', edgelist, fmt='%s', delimiter=' ')
 
-    NPI_pos, NPI_neg = np.zeros((len(ncRNA), len(protein))), np.zeros((len(ncRNA), len(protein)))
+    Positives = pd.DataFrame(positive_index, columns=['RNA', 'protein'])
+    Positives['label'] = 1
+
+    NPI_pos = np.zeros((len(ncRNA), len(protein)))
     NPI_pos[Positives.values[:, 0], Positives.values[:, 1]] = 1
-    NPI_neg[Negatives.values[:, 0], Negatives.values[:, 1]] = 1
-
     NPI_pos = pd.DataFrame(NPI_pos)
-    NPI_neg = pd.DataFrame(NPI_neg)
     NPI_pos.to_csv(savepath + 'NPI_pos.csv', index=False, header=None)
-    NPI_neg.to_csv(savepath + 'NPI_neg.csv', index=False, header=None)
+
+    swpath = savepath + 'protein sw_smilarity matrix.csv'
+    swscore_matrix = pd.read_csv(swpath, header=None).values
+    Positives,Negatives = get_Positives_and_Negatives(positive_index, protein, ncRNA, swscore_matrix, savepath)
+
+
+    Positives, Negatives_sort = get_edgelist(Positives, Negatives, 'sort', savepath,
+                                             len(ncRNA))  # 得到合并前的正负样本对，dataframe
+    _, Negatives_random = get_edgelist(Positives, Negatives, 'random', savepath, len(ncRNA))
+    _, Negatives_sort_random = get_edgelist(Positives, Negatives, 'sort_random', savepath, len(ncRNA))
+
+    NPI_neg_sort, NPI_neg_random, NPI_neg_sort_random = np.zeros((len(ncRNA), len(protein))), np.zeros(
+        (len(ncRNA), len(protein))), np.zeros((len(ncRNA), len(protein)))
+    NPI_neg_sort[Negatives_sort.values[:, 0], Negatives_sort.values[:, 1]] = 1
+    NPI_neg_sort = pd.DataFrame(NPI_neg_sort)
+    NPI_neg_sort.to_csv(savepath + 'NPI_neg_sort.csv', index=False, header=None)
+
+    NPI_neg_random[Negatives_random.values[:, 0], Negatives_random.values[:, 1]] = 1
+    NPI_neg_random = pd.DataFrame(NPI_neg_random)
+    NPI_neg_random.to_csv(savepath + 'NPI_neg_random.csv', index=False, header=None)
+
+    NPI_neg_sort_random[Negatives_sort_random.values[:, 0], Negatives_sort_random.values[:, 1]] = 1
+    NPI_neg_sort_random = pd.DataFrame(NPI_neg_sort_random)
+    NPI_neg_sort_random.to_csv(savepath + 'NPI_neg_sort_random.csv', index=False, header=None)
 
 
 def get_RPI2241(filepath, savepath):
@@ -462,7 +473,7 @@ def get_RPI2241(filepath, savepath):
     swpath = savepath + 'protein sw_smilarity matrix.csv'
     swscore_matrix = pd.read_csv(swpath, header=None).values
     Positives,Negatives = get_Positives_and_Negatives(positive_index, protein, ncRNA, swscore_matrix, savepath)
-    Negatives = pd.read_csv(savepath + 'Negatives.csv')  # 所有的负样本对
+
 
     Positives, Negatives_sort = get_edgelist(Positives, Negatives, 'sort', savepath,
                                              len(ncRNA))  # 得到合并前的正负样本对，dataframe
@@ -527,21 +538,22 @@ def get_NPInter4158(filepath, savepath):
 
 if __name__ == '__main__':
     # NPInter10412
-    # get_NPInter('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\NPInter10412_dataset.txt', 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_10412\\')
+    # get_NPInter('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\NPInter10412_dataset.txt', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\')
 
-    #get_RPI1807('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\', 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1807\\')
-    # get_RPI369('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\RPI369_all.txt', 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI369\\')
+    #get_RPI1807('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\')
+    # get_RPI369('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI369_all.txt', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\')
 
-    # get_RPI13254('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\','C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI13254\\')
-    # get_RPI7317('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\RPI7317.csv','C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI7317\\')
+    # get_RPI13254('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\','C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\')
+    # get_RPI7317('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI7317.csv','C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\')
 
-    # get_RPI1446('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\RPI1446_pairs.txt',
-    #           'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\RPI1446\\')
+    # get_RPI1446('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI1446_pairs.txt',
+    #           'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1446\\')
 
-    get_RPI2241('GNNAE\\raw_data\\','GNNAE\\generated_data\\RPI2241\\')
+    # get_RPI2241('data\\raw_data\\','data\\generated_data\\RPI2241\\')
 
-    #get_NPInter4158('C:\\Users\\yuhan\\Desktop\\GNNAE\\raw_data\\',
-    #         'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\')
+    #get_NPInter4158('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\',
+    #         'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\')
+    get_RPI369('data\\raw_data\\RPI369_all.txt','data\\generated_data\\RPI369\\')
 
 
 

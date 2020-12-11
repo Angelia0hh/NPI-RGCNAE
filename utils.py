@@ -6,9 +6,15 @@ import pandas as pd
 import random
 from sklearn.metrics import roc_auc_score
 import math
+import os
 
-np.random.seed(1)
 random.seed(1)
+np.random.seed(1)
+os.environ['PYTHONHASHSEED'] = str(1)
+torch.manual_seed(1)
+torch.cuda.manual_seed(1)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 def to_torch_sparse_tensor(x, device='cpu'):
     if not sp.isspmatrix_coo(x):
