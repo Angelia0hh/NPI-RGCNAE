@@ -10,6 +10,7 @@ import pandas as pd
 from model2 import *
 from utils import *
 import os
+import matplotlib.pyplot as plt
 '''
 ######hyper
 INITIAL_LEARNING_RATE = 0.01
@@ -64,22 +65,9 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample):
     for i in range(1024):
         name.append(i + 1)
 
-    if negative_random_sample == 'sort_random':
-        NPI_neg_matrix = pd.read_csv(filepath + 'NPI_neg_sort_random.csv', header=None).values
-        edgelist = pd.read_csv(filepath + 'edgelist_sort_random.csv', header=None)
-        emb = pd.read_csv(filepath + 'emd_sort_random.emd.txt', header=None, sep=' ', names=name)
-    elif negative_random_sample == 'sort':
-        NPI_neg_matrix = pd.read_csv(filepath + 'NPI_neg_sort.csv', header=None).values
-        edgelist = pd.read_csv(filepath + 'edgelist_sort.csv', header=None)
-        emb = pd.read_csv(filepath + 'emd_sort.emd.txt', header=None, sep=' ', names=name)
-    elif negative_random_sample == 'random':
-        NPI_neg_matrix = pd.read_csv(filepath + 'NPI_neg_random.csv', header=None).values
-        edgelist = pd.read_csv(filepath + 'edgelist_random.csv', header=None)
-        emb = pd.read_csv(filepath + 'emd_random.emd.txt', header=None, sep=' ', names=name)
-    elif negative_random_sample == 'raw':
-        NPI_neg_matrix = pd.read_csv(filepath + 'NPI_neg_raw.csv', header=None).values
-        edgelist = pd.read_csv(filepath + 'edgelist_raw.csv', header=None)
-        emb = pd.read_csv(filepath + 'emd_raw.emd.txt', header=None, sep=' ', names=name)
+    NPI_neg_matrix = pd.read_csv(filepath + "NPI_neg_"+negative_random_sample+".csv", header=None).values
+    edgelist = pd.read_csv(filepath + 'edgelist_'+negative_random_sample+'.csv', header=None)
+    emb = pd.read_csv(filepath + 'emd_'+negative_random_sample+'.emd.txt', header=None, sep=' ', names=name)
 
     protein_side_feature = pd.read_csv(filepath + 'Protein3merfeat.csv').values
     RNA_side_feature = pd.read_csv(filepath + 'ncRNA4merfeat.csv').values
@@ -109,7 +97,7 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample):
 def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,protein_side_feature, RNA_side_feature, edgelist,
           NODE_INPUT_DIM, SIDE_FEATURE_DIM, GCN_HIDDEN_DIM, SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM,
           threshold, probsavepath, metricssavepath,embedsavepath, use_side_feature, accumulate_strategy,
-          EPOCHS=100, DROPOUT_RATIO = 0.7, INITIAL_LEARNING_RATE = 0.01, layers = 1, WEIGHT_DACAY = 0.005, step_size = 10, gamma = 0.7):
+          EPOCHS, DROPOUT_RATIO, INITIAL_LEARNING_RATE, layers, WEIGHT_DACAY, step_size, gamma):
     '''
 
     :param NPI_pos_matrix: binary matrix of positive samples，shape:[ncRNA_num,protein_num]
@@ -155,14 +143,10 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
     train_data, test_data = get_k_fold_data(5, edgelist)
 
     # 训练时计算所有的样本对的得分，但是只有训练集中的通过loss进行优化
-    RNA_indices = edgelist.values[:, 1]
-    protein_indices = edgelist.values[:, 2]
     RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
     protein_side_feature = tensor_from_numpy(protein_side_feature, DEVICE).float()
     RNA_identity_feature = tensor_from_numpy(RNA_identity_feature, DEVICE).float()
     protein_identity_feature = tensor_from_numpy(protein_identity_feature, DEVICE).float()
-    RNA_indices = tensor_from_numpy(RNA_indices, DEVICE).long()
-    protein_indices = tensor_from_numpy(protein_indices, DEVICE).long()
     nc_num = RNA_side_feature.shape[0]
     pr_num = protein_side_feature.shape[0]
 
@@ -174,6 +158,10 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
 
 
     for i in range(5):
+        plot_train_loss = []
+        plot_valid_loss = []
+        plot_train_acc = []
+        plot_valid_acc = []
 
         train_pos_num =  len(np.where(train_data[i][:,3]==1)[0])
         train_neg_num = len(np.where(train_data[i][:,3]==-1)[0])
@@ -214,11 +202,6 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
         labels = tensor_from_numpy((train_data[i][:,3]), DEVICE).long()
         train_mask = tensor_from_numpy(train_data[i][:,0], DEVICE)
 
-        model_inputs = (RNA2protein_adj,  protein2RNA_adj,
-                        RNA_identity_feature, protein_identity_feature,
-                        RNA_side_feature, protein_side_feature,
-                        RNA_indices, protein_indices, )
-
         model = GraphMatrixCompletion(NODE_INPUT_DIM, SIDE_FEATURE_DIM, GCN_HIDDEN_DIM,
                                       SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM, use_side_feature = use_side_feature,accumulate_strategy = accumulate_strategy,
                                       dropout=DROPOUT_RATIO, num_basis=2, layers=layers).to(DEVICE)
@@ -232,23 +215,31 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
         for e in range(EPOCHS):
             model.train()
             optimizer.zero_grad()
+            RNA_indices = train_data[i][:, 1]
+            protein_indices = train_data[i][:, 2]
+            RNA_indices = tensor_from_numpy(RNA_indices, DEVICE).long()
+            protein_indices = tensor_from_numpy(protein_indices, DEVICE).long()
+            model_inputs = (RNA2protein_adj, protein2RNA_adj,
+                            RNA_identity_feature, protein_identity_feature,
+                            RNA_side_feature, protein_side_feature,
+                            RNA_indices, protein_indices,)
             logits,_,_ = model(*model_inputs)
             prob = F.softmax(logits, dim=1).detach()
             pred_y = torch.sum(prob * SCORES, dim=1).detach()
             print("The {}th training,the whole number of train dataset is {}:".format(e+1,len(train_mask)))
-            print("probability:")
-            print(prob)
-            print("prediction:")
+            #print("probability:")
+            #print(prob)
+            #print("prediction:")
             y = pred_y.clone().detach()
             y[y > threshold] = 1
             y[y <=threshold] = 0
-            print(y[train_mask])
-            print('score:')
-            print(pred_y[train_mask])
-            print("label:")
-            print(labels)
-            loss = criterion(logits[train_mask], (labels+1)//2)
-            rmse = expected_rmse(logits[train_mask], labels)
+            #print(y[train_mask])
+            #print('score:')
+            #print(pred_y[train_mask])
+            #print("label:")
+            #print(labels)
+            loss = criterion(logits, (labels+1)//2)
+            rmse = expected_rmse(logits, labels)
 
             loss.backward()  # 反向传播计算参数的梯度
             optimizer.step()  # 使用优化方法进行梯度更新
@@ -257,88 +248,117 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
             scheduler.step()
 
             print("Epoch {:03d}: Loss: {:.4f}, RMSE: {:.4f}".format(e, loss.item(), rmse.item()))
-            printN(y[train_mask], (labels+1)//2)
-            train_acc = accuracy(y[train_mask], (labels+1)//2)
-            train_pre = precision(y[train_mask], (labels+1)//2)
-            train_sen = sensitivity(y[train_mask], (labels+1)//2)
-            train_spe = specificity(y[train_mask], (labels+1)//2)
-            train_MCC = MCC(y[train_mask], (labels+1)//2)
-            train_FPR = FPR(y[train_mask], (labels+1)//2)
-            train_TPR = TPR(y[train_mask], (labels+1)//2)
+            printN(y, (labels+1)//2)
+            train_acc = accuracy(y, (labels+1)//2)
+            train_pre = precision(y, (labels+1)//2)
+            train_sen = sensitivity(y, (labels+1)//2)
+            train_spe = specificity(y, (labels+1)//2)
+            train_MCC = MCC(y, (labels+1)//2)
+            train_FPR = FPR(y, (labels+1)//2)
+            train_TPR = TPR(y, (labels+1)//2)
             print("accuracy:{}, PRE:{}, SEN:{}, SPE:{}, MCC:{}, FPR:{}, TPR:{}".
                   format(train_acc, train_pre, train_sen, train_spe, train_MCC, train_FPR, train_TPR))
             print('\n')
+            plot_train_loss.append(loss)
+            plot_train_acc.append(train_acc)
 
             #  验证
-            if (e + 1) % 10 == 0:
-                model.eval()
-                with torch.no_grad():
-                    test_logits, embedding_protein, embedding_RNA = model(*model_inputs)
-                    test_labels = tensor_from_numpy(test_data[i][:, 3], DEVICE).long()
-                    test_mask = tensor_from_numpy(test_data[i][:, 0], DEVICE)
-                    test_prob = F.softmax(test_logits, dim=1).detach()
-                    test_pred_y = torch.sum(test_prob * SCORES, dim=1).detach()
-                    test_loss = criterion(test_logits[test_mask], (test_labels+1)//2)
-                    rmse = expected_rmse(test_logits[test_mask], test_labels)
-                    print("==========================")
-                    print('validation')
-                    print("probability:")
-                    print(test_prob)
-                    print("prediction:")
-                    test_y = test_pred_y.clone().detach()
-                    test_y[test_y > threshold] = 1
-                    test_y[test_y <=threshold] = 0
-                    print(test_y[test_mask])
-                    print("score:")
-                    print(test_pred_y[test_mask])
-                    print("label:")
-                    print(test_labels)
-                    print('Test On Epoch {}: loss: {:.4f}, Test rmse: {:.4f}'.format(e, test_loss.item(), rmse.item()))
 
-                    printN(test_y[test_mask], (test_labels+1)//2)
-                    test_AUC = AUC(test_data[i][:, 3].squeeze(), test_pred_y[test_mask].detach().numpy().squeeze())
-                    test_acc = accuracy(test_y[test_mask], (test_labels+1)//2)
-                    test_pre = precision(test_y[test_mask], (test_labels+1)//2)
-                    test_sen = sensitivity(test_y[test_mask], (test_labels+1)//2)
-                    test_spe = specificity(test_y[test_mask], (test_labels+1)//2)
-                    test_MCC = MCC(test_y[test_mask], (test_labels+1)//2)
-                    test_FPR = FPR(test_y[test_mask], (test_labels+1)//2)
-                    test_TPR = TPR(test_y[test_mask], (test_labels+1)//2)
-                    print("accuracy:{}, PRE:{}, SEN:{}, SPE:{}, MCC:{}, FPR:{}, TPR:{}, AUC:{}".
-                          format(test_acc, test_pre, test_sen, test_spe, test_MCC ,test_FPR, test_TPR, test_AUC))
-                    print("==========================")
-                    print('\n')
+            model.eval()
+            with torch.no_grad():
+                RNA_indices = test_data[i][:, 1]
+                protein_indices = test_data[i][:, 2]
+                RNA_indices = tensor_from_numpy(RNA_indices, DEVICE).long()
+                protein_indices = tensor_from_numpy(protein_indices, DEVICE).long()
+                model_inputs = (RNA2protein_adj, protein2RNA_adj,
+                                RNA_identity_feature, protein_identity_feature,
+                                RNA_side_feature, protein_side_feature,
+                                RNA_indices, protein_indices,)
+                test_logits, embedding_protein, embedding_RNA = model(*model_inputs)
+                test_labels = tensor_from_numpy(test_data[i][:, 3], DEVICE).long()
+                test_prob = F.softmax(test_logits, dim=1).detach()
+                test_pred_y = torch.sum(test_prob * SCORES, dim=1).detach()
+                test_loss = criterion(test_logits, (test_labels+1)//2)
+                rmse = expected_rmse(test_logits, test_labels)
+                print("==========================")
+                print('validation')
+                #print("probability:")
+                #print(test_prob)
+                #print("prediction:")
+                test_y = test_pred_y.clone().detach()
+                test_y[test_y > threshold] = 1
+                test_y[test_y <=threshold] = 0
+                #print(test_y[test_mask])
+                #print("score:")
+                #print(test_pred_y[test_mask])
+                #print("label:")
+                #print(test_labels)
+                print('Test On Epoch {}: loss: {:.4f}, Test rmse: {:.4f}'.format(e, test_loss.item(), rmse.item()))
+
+                printN(test_y, (test_labels+1)//2)
+                test_AUC = AUC(test_data[i][:, 3].squeeze(), test_pred_y.detach().numpy().squeeze())
+                test_acc = accuracy(test_y, (test_labels+1)//2)
+                test_pre = precision(test_y, (test_labels+1)//2)
+                test_sen = sensitivity(test_y, (test_labels+1)//2)
+                test_spe = specificity(test_y, (test_labels+1)//2)
+                test_MCC = MCC(test_y, (test_labels+1)//2)
+                test_FPR = FPR(test_y, (test_labels+1)//2)
+                test_TPR = TPR(test_y, (test_labels+1)//2)
+                plot_valid_acc.append(test_acc)
+                plot_valid_loss.append(test_loss)
+                print("accuracy:{}, PRE:{}, SEN:{}, SPE:{}, MCC:{}, FPR:{}, TPR:{}, AUC:{}".
+                      format(test_acc, test_pre, test_sen, test_spe, test_MCC ,test_FPR, test_TPR, test_AUC))
+                print("==========================")
+                print('\n')
 
 
-                if (e+1)==EPOCHS:
+            if (e+1)==EPOCHS:
 
-                    sheet  = open(metricssavepath,'a')
-                    sheet.write("fold"+str(i) + "," +str(test_acc)+","+str(test_pre)+","+str(test_sen)+","+str(test_spe)+","+str(test_MCC)+","+
-                                str(test_FPR)+","+str(test_TPR)+","+str(test_AUC)+"\n")
-                    sheet.close()
+                sheet = open(metricssavepath,'a')
+                sheet.write("fold"+str(i) + "," +str(test_acc)+","+str(test_pre)+","+str(test_sen)+","+str(test_spe)+","+str(test_MCC)+","+
+                            str(test_FPR)+","+str(test_TPR)+","+str(test_AUC)+"\n")
+                sheet.close()
 
-                    if(i==4):
-                        embedding_RNA = pd.DataFrame(embedding_RNA)
-                        embedding_protein = pd.DataFrame(embedding_protein)
-                        #embedding_protein.to_csv(embedsavepath,header=False,index=False)
-                        #embedding_RNA.to_csv(embedsavepath, header=False,index=False)
-                    valid_acc.append(test_acc)
-                    valid_pre.append(test_pre)
-                    valid_sen.append(test_sen)
-                    valid_spe.append(test_spe)
-                    valid_MCC.append(test_MCC)
-                    valid_FPR.append(test_FPR)
-                    valid_TPR.append(test_TPR)
-                    valid_AUC.append(test_AUC)
-                    valid_loss.append(test_loss)
-                    valid_RMSE.append(rmse)
-                model.train()
+                if(i==4):
+                    embedding_RNA = pd.DataFrame(embedding_RNA)
+                    embedding_protein = pd.DataFrame(embedding_protein)
+                    #embedding_protein.to_csv(embedsavepath,header=False,index=False)
+                    #embedding_RNA.to_csv(embedsavepath, header=False,index=False)
+                valid_acc.append(test_acc)
+                valid_pre.append(test_pre)
+                valid_sen.append(test_sen)
+                valid_spe.append(test_spe)
+                valid_MCC.append(test_MCC)
+                valid_FPR.append(test_FPR)
+                valid_TPR.append(test_TPR)
+                valid_AUC.append(test_AUC)
+                valid_loss.append(test_loss)
+                valid_RMSE.append(rmse)
+            model.train()
 
-        if len(test_pred_y[test_mask]) == (len(edgelist)//5):
-            pred_list.append(test_pred_y[test_mask].numpy())
+        plt.figure(figsize=(6, 4))
+        plt.plot(range(len(plot_train_loss)), plot_train_loss,label = 'train loss')
+        plt.plot(range(len(plot_valid_loss)), plot_valid_loss, label='valid loss')
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.title("loss")
+        plt.legend()
+        plt.show()
+
+        plt.figure(figsize=(6, 4))
+        plt.plot(range(len(plot_train_acc)), plot_train_acc, label='train acc')
+        plt.plot(range(len(plot_valid_acc)), plot_valid_acc, label='valid acc')
+        plt.xlabel("epoch")
+        plt.ylabel("acc")
+        plt.title("acc")
+        plt.legend()
+        plt.show()
+
+        if len(test_pred_y) == (len(edgelist)//5):
+            pred_list.append(test_pred_y.numpy())
             label_list.append(test_labels.numpy())
         else:
-            pred_list.append(test_pred_y[test_mask].numpy()[:len(edgelist)//5])
+            pred_list.append(test_pred_y.numpy()[:len(edgelist)//5])
             label_list.append(test_labels.numpy()[:len(edgelist)//5])
 
     pred_res = np.array(pred_list)
@@ -383,9 +403,9 @@ def expected_rmse(logits, label):
 
     return torch.sqrt(diff.mean())
 
-
+set_seed(2)
 if __name__ == "__main__":
-    set_seed(1)
+
     filepath = 'data/generated_data/'
     savepath = 'result/'
 
@@ -639,7 +659,7 @@ if __name__ == "__main__":
     '''
 
 
-    for DATA_SET in ['RPI369', 'RPI7317','RPI13254','RPI2241', 'NPInter_10412'][0:1]:
+    for DATA_SET in ['NPInter_10412','RPI13254','RPI7317','RPI2241','RPI369'][0:1]:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
         
@@ -654,7 +674,8 @@ if __name__ == "__main__":
         GCN_HIDDEN_DIM = config.getint(DATA_SET,'GCN_HIDDEN_DIM')
         SIDE_HIDDEN_DIM = config.getint(DATA_SET,'SIDE_HIDDEN_DIM')
         ENCODE_HIDDEN_DIM = config.getint(DATA_SET,'ENCODE_HIDDEN_DIM')
-        for negative_generation in ['sort','sort_random','random']:
+
+        for negative_generation in ['sort','random','sort_random'][0:1]:
             NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
             protein_side_feature, RNA_side_feature, edgelist = \
                 load_dataset(dataset=DATA_SET, filepath=filepath,
@@ -664,7 +685,7 @@ if __name__ == "__main__":
                   RNA_side_feature, edgelist, NODE_INPUT_DIM=1024, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM, GCN_HIDDEN_DIM=GCN_HIDDEN_DIM,
                   SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
                   use_side_feature=True, accumulate_strategy='stack',
-                  threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY, DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers,
+                  threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY, DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers,EPOCHS=EPOCHS,
                   gamma=gamma, probsavepath=savepath + DATA_SET + "/prob_"+negative_generation+"_stack_node2vec_side.csv",
                   metricssavepath=savepath + DATA_SET + "/metrics_"+negative_generation+"_stack_node2vec_side.csv",
                   embedsavepath = savepath+DATA_SET+"/embedding_protein.csv")
