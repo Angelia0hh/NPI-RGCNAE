@@ -135,34 +135,17 @@ def generated_RNA_kmer(fasta_file, savepath, k = 4):
 
 
 if __name__ == '__main__':
-    '''
-    generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\ncRNA4merfeat.csv', k=4)
 
-    generated_RNA_kmer(fasta_file = 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\ncRNA_extracted_seq.fasta',
-                       savepath = 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\ncRNA4merfeat.csv' , k = 4)
-    
     generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\ncRNA4merfeat.csv', k=4)
-    
+        fasta_file = 'data/generated_data/NPInter_10412/ncRNA_extracted_seq.fasta',
+        savepath = 'data/generated_data/NPInter_10412/ncRNA4merfeat.csv',k=4)
     generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\ncRNA4merfeat.csv', k=4)
-    
+        fasta_file='data/generated_data/RPI369/ncRNA_extracted_seq.fasta',
+        savepath='data/generated_data/RPI369/ncRNA4merfeat.csv', k=4)
+    generated_RNA_kmer(fasta_file = 'data/generated_data/RPI2241/ncRNA_extracted_seq.fasta',
+        savepath = 'data/generated_data/RPI2241/ncRNA4merfeat.csv',k=4)
+    generated_RNA_kmer(fasta_file = 'data/generated_data/RPI7317/ncRNA_extracted_seq.fasta',
+        savepath = 'data/generated_data/RPI7317/ncRNA4merfeat.csv',k=4)
     generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\ncRNA4merfeat.csv', k=4)
-    
-    generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI2241\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI2241\\ncRNA4merfeat.csv', k=4)
-    
-    generated_RNA_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\ncRNA_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\ncRNA4merfeat.csv', k=4)
-    '''
-    generated_RNA_kmer(
-        fasta_file='data\\generated_data\\RPI369\\ncRNA_extracted_seq.fasta',
-        savepath='data\\generated_data\\RPI369\\ncRNA4merfeat.csv', k=4)
+        fasta_file='data/generated_data/NPInter_4158/ncRNA_extracted_seq.fasta',
+        savepath='data/generated_data/NPInter_4158/ncRNA4merfeat.csv', k=4)

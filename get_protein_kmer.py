@@ -120,33 +120,20 @@ def generated_protein_kmer(fasta_file, savepath, k = 3):
     Protein3mer.to_csv(savepath, index=False)
 
 if __name__ == '__main__':
-    '''
+
     generated_protein_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\protein_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\Protein3merfeat.csv', k=3)
-    generated_protein_kmer(fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\protein_extracted_seq.fasta',
-                           savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\Protein3merfeat.csv', k = 3 )
-    
+        fasta_file='data/generated_data/RPI369/protein_extracted_seq.fasta',
+        savepath='data/generated_data/RPI369/Protein3merfeat.csv', k=3)
     generated_protein_kmer(
-            fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\protein_extracted_seq.fasta',
-            savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\Protein3merfeat.csv', k=3)
-    
+        fasta_file='data/generated_data/RPI2241/protein_extracted_seq.fasta',
+        savepath='data/generated_data/RPI2241/Protein3merfeat.csv', k=3)
     generated_protein_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\protein_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\Protein3merfeat.csv', k=3)
-    
+        fasta_file='data/generated_data/RPI7317/protein_extracted_seq.fasta',
+        savepath='data/generated_data/RPI7317/Protein3merfeat.csv', k=3)
     generated_protein_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\protein_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\Protein3merfeat.csv', k=3)
-    
+        fasta_file='data/generated_data/NPInter_10412/protein_extracted_seq.fasta',
+        savepath='data/generated_data/NPInter_10412/Protein3merfeat.csv', k=3)
     generated_protein_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI2241\\protein_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI2241\\Protein3merfeat.csv', k=3)
-    
-    generated_protein_kmer(
-        fasta_file='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\protein_extracted_seq.fasta',
-        savepath='C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\Protein3merfeat.csv', k=3)
-    '''
-    generated_protein_kmer(
-        fasta_file='data\\generated_data\\RPI369\\protein_extracted_seq.fasta',
-        savepath='data\\generated_data\\RPI369\\Protein3merfeat.csv', k=3)
+        fasta_file='data/generated_data/NPInter_4158/protein_extracted_seq.fasta',
+        savepath='data/generated_data/NPInter_4158/Protein3merfeat.csv', k=3)
+

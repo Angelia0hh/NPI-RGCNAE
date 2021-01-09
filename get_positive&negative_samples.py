@@ -537,23 +537,20 @@ def get_NPInter4158(filepath, savepath):
     NPI_neg_sort_random.to_csv(savepath + 'NPI_neg_sort_random.csv', index=False, header=None)
 
 if __name__ == '__main__':
-    # NPInter10412
-    # get_NPInter('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\NPInter10412_dataset.txt', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_10412\\')
-
-    #get_RPI1807('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\')
-    # get_RPI369('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI369_all.txt', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI369\\')
-
+    # get_RPI1807('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\', 'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1807\\')
     # get_RPI13254('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\','C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI13254\\')
-    # get_RPI7317('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI7317.csv','C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI7317\\')
+    # NPInter10412
+    get_NPInter('data/raw_data/NPInter10412_dataset.txt', 'data/generated_data/NPInter_10412/')
 
-    # get_RPI1446('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\RPI1446_pairs.txt',
-    #           'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\RPI1446\\')
+    get_RPI7317('data/raw_data/RPI7317.csv','data/generated_data/RPI7317/')
 
-    # get_RPI2241('data\\raw_data\\','data\\generated_data\\RPI2241\\')
+    get_RPI1446('data/raw_data/RPI1446_pairs.txt', 'data/generated_data/RPI1446/')
 
-    #get_NPInter4158('C:\\Users\\yuhan\\Desktop\\data\\raw_data\\',
-    #         'C:\\Users\\yuhan\\Desktop\\data\\generated_data\\NPInter_4158\\')
-    get_RPI369('data\\raw_data\\RPI369_all.txt','data\\generated_data\\RPI369\\')
+    get_RPI2241('data/raw_data/','data/generated_data/RPI2241/')
+
+    get_NPInter4158('data/raw_data/','data/generated_data/NPInter_4158/')
+
+    get_RPI369('data/raw_data/RPI369_all.txt','data/generated_data/RPI369/')
 
 
 

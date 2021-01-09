@@ -144,5 +144,13 @@ def generated_SW_matrix(filename,path):
     # np.savetxt(os.path.join(path, r'protein sw_test.csv'), finalmatrix, delimiter=',', fmt='%f')
 
 if __name__ == '__main__':
-    generated_SW_matrix(filename = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\protein_extracted_seq.fasta',
-                        path = 'C:\\Users\\yuhan\\Desktop\\GNNAE\\generated_data\\NPInter_4158\\')
+    generated_SW_matrix(filename = 'data/generated_data/NPInter_4158/protein_extracted_seq.fasta',
+                        path = 'data/generated_data/NPInter_4158/')
+    generated_SW_matrix(filename = 'data/generated_data/NPInter_10412/protein_extracted_seq.fasta',
+                        path = 'data/generated_data/NPInter_10412/')
+    generated_SW_matrix(filename='data/generated_data/RPI2241/protein_extracted_seq.fasta',
+                        path='data/generated_data/RPI2241/')
+    generated_SW_matrix(filename='data/generated_data/RPI369/protein_extracted_seq.fasta',
+                        path='data/generated_data/RPI369/')
+
+

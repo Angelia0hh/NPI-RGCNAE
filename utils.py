@@ -7,14 +7,16 @@ import random
 from sklearn.metrics import roc_auc_score
 import math
 import os
-
-random.seed(1)
-np.random.seed(1)
-os.environ['PYTHONHASHSEED'] = str(1)
-torch.manual_seed(1)
-torch.cuda.manual_seed(1)
+'''
+random.seed(2)
+np.random.seed(2)
+os.environ['PYTHONHASHSEED'] = str(2)
+torch.manual_seed(2)
+torch.cuda.manual_seed(2)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+'''
+
 
 def to_torch_sparse_tensor(x, device='cpu'):
     if not sp.isspmatrix_coo(x):
@@ -59,7 +61,8 @@ def globally_normalize_bipartite_adjacency(adjacencies, symmetric=False):
 def get_k_fold_data(k, data):
     data = data.values
     X, y = data[:, :], data[:, -1]
-    sfolder = StratifiedKFold(n_splits = k, shuffle=True,random_state=1)
+    #sfolder = StratifiedKFold(n_splits = k, shuffle=True,random_state=1)
+    sfolder = StratifiedKFold(n_splits=k, shuffle=True)
 
     train_data = []
     test_data = []
