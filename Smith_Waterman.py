@@ -152,5 +152,8 @@ if __name__ == '__main__':
                         path='data/generated_data/RPI2241/')
     generated_SW_matrix(filename='data/generated_data/RPI369/protein_extracted_seq.fasta',
                         path='data/generated_data/RPI369/')
+    generated_SW_matrix(filename='data/generated_data/RPI7317/protein_extracted_seq.fasta',
+                        path='data/generated_data/RPI7317/')
+
 
 

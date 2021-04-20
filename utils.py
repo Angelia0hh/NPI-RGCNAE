@@ -175,6 +175,27 @@ def printN(pred, target):
     FP = false_positive(pred, target)
     FN = false_negative(pred, target)
     print("TN:{},TP:{},FP:{},FN:{}".format(TN, TP, FP, FN))
+    return TP,TN,FP,FN
+
+
+def performance(tp,tn,fp,fn):
+    final_tp = 0
+    final_tn = 0
+    final_fp = 0
+    final_fn = 0
+    for i in range(len(tp)):
+        final_fn += fn[i]
+        final_fp += fp[i]
+        final_tn += tn[i]
+        final_tp += tp[i]
+    print("TN:{},TP:{},FP:{},FN:{}".format(final_tn, final_tp, final_fp, final_fn))
+    ACC = (final_tp + final_tn) /float (final_tp + final_tn + final_fn + final_fp)
+    Sen = final_tp / float(final_tp+ final_fn)
+    Spe = final_tn/float(final_tn+final_fp)
+    Pre = final_tp / float(final_tp + final_fp)
+    MCC = (final_tp*final_tn-final_fp*final_fn)/float(math.sqrt((final_tp+final_fp)*(final_tn+final_fn)*(final_tp+final_fn)*(final_tn+final_fp)))
+    FPR = final_fp/float(final_fp+final_tn)
+    return ACC,Sen, Spe,Pre,MCC,FPR
 
 
 

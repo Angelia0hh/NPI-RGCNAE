@@ -9,12 +9,12 @@ import torch.nn.functional as F
 import pandas as pd
 from model import *
 from utils import *
-#import os
-#import matplotlib.pyplot as plt
+# import os
+# import matplotlib.pyplot as plt
 import time
 
 DEVICE = torch.device('cpu')
-SCORES = torch.tensor([-1,1]).to(DEVICE)
+SCORES = torch.tensor([-1, 1]).to(DEVICE)
 '''
 seed = 1
 random.seed(seed)
@@ -27,12 +27,12 @@ torch.backends.cudnn.benchmark = False
 '''
 
 
-def load_dataset(dataset, filepath, identity_feature, negative_random_sample,identity_feature_dim=1024):
+def load_dataset(dataset, filepath, identity_feature, negative_random_sample, identity_feature_dim=1024):
     print(dataset)
     if dataset == 'NPInter_10412':
-        filepath = filepath +'NPInter_10412/'
+        filepath = filepath + 'NPInter_10412/'
     elif dataset == 'RPI13254':
-        filepath = filepath +'RPI13254/'
+        filepath = filepath + 'RPI13254/'
     elif dataset == 'RPI1807':
         filepath = filepath + 'RPI1807/'
     elif dataset == 'RPI488':
@@ -43,9 +43,9 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample,ide
         filepath = filepath + 'RPI7317/'
     elif dataset == 'RPI1446':
         filepath = filepath + 'RPI1446/'
-    elif dataset =='RPI2241':
+    elif dataset == 'RPI2241':
         filepath = filepath + 'RPI2241/'
-    elif dataset =='NPInter_4158':
+    elif dataset == 'NPInter_4158':
         filepath = filepath + 'NPInter_4158/'
     elif dataset == 'RPI369':
         filepath = filepath + 'RPI369/'
@@ -56,38 +56,36 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample,ide
     for i in range(1024):
         name.append(i + 1)
 
-    NPI_neg_matrix = pd.read_csv(filepath + "NPI_neg_"+negative_random_sample+".csv", header=None).values
-    edgelist = pd.read_csv(filepath + 'edgelist_'+negative_random_sample+'.csv', header=None)
-    #emb = pd.read_csv(filepath + 'emd_'+negative_random_sample+'.emd.txt', header=None, sep=' ', names=name)
+    NPI_neg_matrix = pd.read_csv(filepath + "NPI_neg_" + negative_random_sample + ".csv", header=None).values
+    edgelist = pd.read_csv(filepath + 'edgelist_' + negative_random_sample + '.csv', header=None)
+    # emb = pd.read_csv(filepath + 'emd_'+negative_random_sample+'.emd.txt', header=None, sep=' ', names=name)
 
     protein_side_feature = pd.read_csv(filepath + 'Protein3merfeat.csv').values
     RNA_side_feature = pd.read_csv(filepath + 'ncRNA4merfeat.csv').values
     supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
     RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
 
-
     if (identity_feature == 'one hot'):
         identity_feature = np.identity(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], dtype=np.float32)
         RNA_identity_feature, protein_identity_feature = identity_feature[
                                                          :NPI_pos_matrix.shape[0]], identity_feature[
                                                                                     NPI_pos_matrix.shape[0]:]
-    #elif (identity_feature == 'node2vec'):
-        #emb.sort_values('index', inplace=True)  # 按index排序
-        #emb = emb[list(range(1, 1025))].values
-        #RNA_identity_feature, protein_identity_feature = emb[:NPI_pos_matrix.shape[0]], emb[NPI_pos_matrix.shape[0]:]
-    elif (identity_feature =='random'):
-        feature = np.random.randn(NPI_pos_matrix.shape[0]+NPI_pos_matrix.shape[1],identity_feature_dim)
-        RNA_identity_feature, protein_identity_feature = feature[:NPI_pos_matrix.shape[0]], feature[NPI_pos_matrix.shape[0]:]
-    elif (identity_feature == 'kmer'):
-        RNA_identity_feature = RNA_side_feature
-        protein_identity_feature = protein_side_feature
+    # elif (identity_feature == 'node2vec'):
+    # emb.sort_values('index', inplace=True)  # 按index排序
+    # emb = emb[list(range(1, 1025))].values
+    # RNA_identity_feature, protein_identity_feature = emb[:NPI_pos_matrix.shape[0]], emb[NPI_pos_matrix.shape[0]:]
+    elif (identity_feature == 'random'):
+        feature = np.random.randn(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], identity_feature_dim)
+        RNA_identity_feature, protein_identity_feature = feature[:NPI_pos_matrix.shape[0]], feature[
+                                                                                            NPI_pos_matrix.shape[0]:]
     return NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, \
            RNA_identity_feature, protein_side_feature, RNA_side_feature, edgelist
 
 
-def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,protein_side_feature, RNA_side_feature, edgelist,
+def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, protein_side_feature,
+          RNA_side_feature, edgelist,
           NODE_INPUT_DIM, SIDE_FEATURE_DIM, GCN_HIDDEN_DIM, SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM,
-          threshold, probsavepath, metricssavepath,embedsavepath, use_side_feature, accumulate_strategy,
+          threshold, probsavepath, metricssavepath, embedsavepath, use_side_feature, accumulate_strategy,
           EPOCHS, DROPOUT_RATIO, INITIAL_LEARNING_RATE, layers, WEIGHT_DACAY, step_size, gamma):
     '''
 
@@ -118,24 +116,17 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
     :return:
     '''
 
-    valid_acc = []
-    valid_pre= []
-    valid_sen = []
-    valid_spe = []
-    valid_MCC = []
-    valid_FPR = []
-    valid_TPR = []
-    valid_loss = []
-    valid_AUC = []
     pred_list = []
     label_list = []
+    tps = []
+    tns = []
+    fns = []
+    fps = []
+    RNA_embs = []
+    protein_embs = []
 
     # 随机划分k折交叉验证
     train_data, test_data = get_k_fold_data(5, edgelist)
-    minNum = len(edgelist)
-    for t in range(5):
-        minNum = min(minNum,len(test_data[t]))
-
 
     # 训练时计算所有的样本对的得分，但是只有训练集中的通过loss进行优化
     RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
@@ -145,41 +136,34 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
     nc_num = RNA_side_feature.shape[0]
     pr_num = protein_side_feature.shape[0]
 
-
-    sheet = open(metricssavepath, 'a')
-    sheet.write(" " + "," + 'acc' + "," + 'pre' + "," + 'sen' + "," + 'spe' + "," + 'MCC' + "," +
-                'FPR' + "," + 'TPR' + "," + 'AUC' + "\n")
-    sheet.close()
-
-
     for i in range(5):
         plot_train_loss = []
         plot_valid_loss = []
         plot_train_acc = []
         plot_valid_acc = []
 
-        train_pos_num =  len(np.where(train_data[i][:,3]==1)[0])
-        train_neg_num = len(np.where(train_data[i][:,3]==-1)[0])
-        test_pos_num = len(np.where(test_data[i][:,3]==1)[0])
-        test_neg_num = len(np.where(test_data[i][:,3]==-1)[0])
+        train_pos_num = len(np.where(train_data[i][:, 3] == 1)[0])
+        train_neg_num = len(np.where(train_data[i][:, 3] == -1)[0])
+        test_pos_num = len(np.where(test_data[i][:, 3] == 1)[0])
+        test_neg_num = len(np.where(test_data[i][:, 3] == -1)[0])
 
-        print("This is the {}th cross validation ".format(i+1))
+        print("This is the {}th cross validation ".format(i + 1))
         print("The number of train data is {},containing positive samples:{} and negative samples:{}"
-              .format(len(train_data[i]),train_pos_num,train_neg_num))
+              .format(len(train_data[i]), train_pos_num, train_neg_num))
         print("The number of valid data is {},containing positive samples:{} and negative samples:{}"
-              .format(len(test_data[i]),test_pos_num,test_neg_num))
+              .format(len(test_data[i]), test_pos_num, test_neg_num))
 
-        #edgelist一共四列：[index,RNA,protein,label]
-        mask = np.ones((nc_num,pr_num))
-        mask[test_data[i][:,1],test_data[i][:,2]] = 0 #将验证集中的边置0
+        # edgelist一共四列：[index,RNA,protein,label]
+        mask = np.ones((nc_num, pr_num))
+        mask[test_data[i][:, 1], test_data[i][:, 2]] = 0  # 将验证集中的边置0
         print(mask.sum())
         print(NPI_pos_matrix.sum())
         print(NPI_neg_matrix.sum())
-        tmp_pos = NPI_pos_matrix*mask
-        tmp_neg = NPI_neg_matrix*mask
+        tmp_pos = NPI_pos_matrix * mask
+        tmp_neg = NPI_neg_matrix * mask
 
-        #分别建RNA到protein邻接矩阵的列表和protein到RNA的邻接矩阵列表
-        RNA2protein_adj= []
+        # 分别建RNA到protein邻接矩阵的列表和protein到RNA的邻接矩阵列表
+        RNA2protein_adj = []
         RNA2protein_adj.append(tmp_neg)
         RNA2protein_adj.append(tmp_pos)
         protein2RNA_adj = []
@@ -189,24 +173,25 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
         print(tmp_neg.sum())
         print("The number of positive samples in the matrix:")
         print(tmp_pos.sum())
-        RNA2protein_adj = globally_normalize_bipartite_adjacency(RNA2protein_adj,False)
-        protein2RNA_adj = globally_normalize_bipartite_adjacency(protein2RNA_adj,False)
+        RNA2protein_adj = globally_normalize_bipartite_adjacency(RNA2protein_adj, False)
+        protein2RNA_adj = globally_normalize_bipartite_adjacency(protein2RNA_adj, False)
 
-        #将numpy.array 转为Tensor
-        RNA2protein_adj= [to_torch_sparse_tensor(adj, DEVICE) for adj in RNA2protein_adj]
+        # 将numpy.array 转为Tensor
+        RNA2protein_adj = [to_torch_sparse_tensor(adj, DEVICE) for adj in RNA2protein_adj]
         protein2RNA_adj = [to_torch_sparse_tensor(adj, DEVICE) for adj in protein2RNA_adj]
-        labels = tensor_from_numpy((train_data[i][:,3]), DEVICE).long()
-        train_mask = tensor_from_numpy(train_data[i][:,0], DEVICE)
+        labels = tensor_from_numpy((train_data[i][:, 3]), DEVICE).long()
+        train_mask = tensor_from_numpy(train_data[i][:, 0], DEVICE)
 
         model = GraphMatrixCompletion(NODE_INPUT_DIM, SIDE_FEATURE_DIM, GCN_HIDDEN_DIM,
-                                      SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM, use_side_feature = use_side_feature,accumulate_strategy = accumulate_strategy,
+                                      SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM, use_side_feature=use_side_feature,
+                                      accumulate_strategy=accumulate_strategy,
                                       dropout=DROPOUT_RATIO, num_basis=2, layers=layers).to(DEVICE)
         criterion = nn.CrossEntropyLoss().to(DEVICE)
         optimizer = optim.Adam(model.parameters(), lr=INITIAL_LEARNING_RATE, weight_decay=WEIGHT_DACAY)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size= step_size, gamma= gamma, last_epoch=-1)
-        #scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,[80], gamma=0.5, last_epoch=-1)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma, last_epoch=-1)
+        # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,[80], gamma=0.5, last_epoch=-1)
 
-        #print("初始化的学习率：", optimizer.defaults['lr'])
+        # print("初始化的学习率：", optimizer.defaults['lr'])
 
         for e in range(EPOCHS):
             model.train()
@@ -219,30 +204,20 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
                             RNA_identity_feature, protein_identity_feature,
                             RNA_side_feature, protein_side_feature,
                             RNA_indices, protein_indices,)
-            logits,_,_ = model(*model_inputs)
+            logits = model(*model_inputs)
             prob = F.softmax(logits, dim=1).detach()
             pred_y = torch.sum(prob * SCORES, dim=1).detach()
-            #print("The {}th training,the whole number of train dataset is {}:".format(e+1,len(train_mask)))
-            #print("probability:")
-            #print(prob)
-            #print("prediction:")
             y = pred_y.clone().detach()
             y[y > threshold] = 1
-            y[y <=threshold] = 0
-            #print(y[train_mask])
-            #print('score:')
-            #print(pred_y[train_mask])
-            #print("label:")
-            #print(labels)
-            loss = criterion(logits, (labels+1)//2)
-
+            y[y <= threshold] = 0
+            loss = criterion(logits, (labels + 1) // 2)
             loss.backward()  # 反向传播计算参数的梯度
             optimizer.step()  # 使用优化方法进行梯度更新
 
-            #print("第%d个epoch的学习率：%f" % (e+1, optimizer.param_groups[0]['lr']))
+            # print("第%d个epoch的学习率：%f" % (e+1, optimizer.param_groups[0]['lr']))
             scheduler.step()
 
-            print("Epoch {:03d}: Loss: {:.4f}".format(e, loss.item()))
+            '''
             printN(y, (labels+1)//2)
             train_acc = accuracy(y, (labels+1)//2)
             train_pre = precision(y, (labels+1)//2)
@@ -254,9 +229,9 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
             print("accuracy:{}, PRE:{}, SEN:{}, SPE:{}, MCC:{}, FPR:{}, TPR:{}".
                   format(train_acc, train_pre, train_sen, train_spe, train_MCC, train_FPR, train_TPR))
             print('\n')
-
             plot_train_loss.append(loss)
             plot_train_acc.append(train_acc)
+            '''
 
             #  验证
             model.eval()
@@ -269,133 +244,66 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
                                 RNA_identity_feature, protein_identity_feature,
                                 RNA_side_feature, protein_side_feature,
                                 RNA_indices, protein_indices,)
-                test_logits, embedding_protein, embedding_RNA = model(*model_inputs)
+                test_logits = model(*model_inputs)
                 test_labels = tensor_from_numpy(test_data[i][:, 3], DEVICE).long()
                 test_prob = F.softmax(test_logits, dim=1).detach()
                 test_pred_y = torch.sum(test_prob * SCORES, dim=1).detach()
-                test_loss = criterion(test_logits, (test_labels+1)//2)
+                test_loss = criterion(test_logits, (test_labels + 1) // 2)
                 print("==========================")
+                print("Epoch {:03d}: Loss: {:.4f}".format(e, test_loss.item()))
                 print('validation')
-                #print("probability:")
-                #print(test_prob)
-                #print("prediction:")
+
                 test_y = test_pred_y.clone().detach()
                 test_y[test_y > threshold] = 1
-                test_y[test_y <=threshold] = 0
-                #print(test_y[test_mask])
-                #print("score:")
-                #print(test_pred_y[test_mask])
-                #print("label:")
-                #print(test_labels)
-                #print('Test On Epoch {}: loss: {:.4f}'.format(e, test_loss.item()))
+                test_y[test_y <= threshold] = 0
 
-                printN(test_y, (test_labels+1)//2)
-                test_AUC = AUC(test_data[i][:, 3].squeeze(), test_pred_y.detach().numpy().squeeze())
-                test_acc = accuracy(test_y, (test_labels+1)//2)
-                test_pre = precision(test_y, (test_labels+1)//2)
-                test_sen = sensitivity(test_y, (test_labels+1)//2)
-                test_spe = specificity(test_y, (test_labels+1)//2)
-                test_MCC = MCC(test_y, (test_labels+1)//2)
-                test_FPR = FPR(test_y, (test_labels+1)//2)
-                test_TPR = TPR(test_y, (test_labels+1)//2)
-                plot_valid_acc.append(test_acc)
-                plot_valid_loss.append(test_loss)
+
+                TP, TN, FP, FN = printN(test_y, (test_labels + 1) // 2)
+                test_AUC = AUC(test_data[i][:, 3].squeeze(), test_prob[:,1].detach().numpy().squeeze())
+                test_acc = accuracy(test_y, (test_labels + 1) // 2)
+                test_pre = precision(test_y, (test_labels + 1) // 2)
+                test_sen = sensitivity(test_y, (test_labels + 1) // 2)
+                test_spe = specificity(test_y, (test_labels + 1) // 2)
+                test_MCC = MCC(test_y, (test_labels + 1) // 2)
+                test_FPR = FPR(test_y, (test_labels + 1) // 2)
+                test_TPR = TPR(test_y, (test_labels + 1) // 2)
+
                 print("accuracy:{}, PRE:{}, SEN:{}, SPE:{}, MCC:{}, FPR:{}, TPR:{}, AUC:{}".
-                      format(test_acc, test_pre, test_sen, test_spe, test_MCC ,test_FPR, test_TPR, test_AUC))
+                      format(test_acc, test_pre, test_sen, test_spe, test_MCC, test_FPR, test_TPR, test_AUC))
                 print("==========================")
                 print('\n')
 
+                if (e + 1) == EPOCHS:
+                    tps.append(TP)
+                    fps.append(FP)
+                    tns.append(TN)
+                    fns.append(FN)
 
-            if (e+1)==EPOCHS:
-
-                sheet = open(metricssavepath,'a')
-                sheet.write("fold"+str(i) + "," +str(test_acc)+","+str(test_pre)+","+str(test_sen)+","+str(test_spe)+","+str(test_MCC)+","+
-                            str(test_FPR)+","+str(test_TPR)+","+str(test_AUC)+"\n")
-                sheet.close()
-
-
-                if(i==4):
-                    embedding_RNA = pd.DataFrame(embedding_RNA)
-                    embedding_protein = pd.DataFrame(embedding_protein)
-                    #embedding_protein.to_csv(embedsavepath+"_protein.csv",header=False,index=False)
-                    #embedding_RNA.to_csv(embedsavepath+"_RNA.csv", header=False,index=False)
-                valid_acc.append(test_acc)
-                valid_pre.append(test_pre)
-                valid_sen.append(test_sen)
-                valid_spe.append(test_spe)
-                valid_MCC.append(test_MCC)
-                valid_FPR.append(test_FPR)
-                valid_TPR.append(test_TPR)
-                valid_AUC.append(test_AUC)
-                valid_loss.append(test_loss)
+                    pred_list.append(test_prob[:,1].numpy())
+                    label_list.append(test_labels.numpy())
 
             model.train()
-        '''
-        plt.figure(figsize=(6, 4))
-        plt.plot(range(len(plot_train_loss)), plot_train_loss, label='train loss')
-        plt.plot(range(len(plot_valid_loss)), plot_valid_loss, label='valid loss')
-        plt.xlabel("epoch")
-        plt.ylabel("loss")
-        plt.title("loss")
-        plt.legend()
-        plt.show()
 
-        plt.figure(figsize=(6, 4))
-        plt.plot(range(len(plot_train_acc)), plot_train_acc, label='train acc')
-        plt.plot(range(len(plot_valid_acc)), plot_valid_acc, label='valid acc')
-        plt.xlabel("epoch")
-        plt.ylabel("acc")
-        plt.title("acc")
-        plt.legend()
-        plt.show()
-        '''
+    pred_list = np.concatenate(pred_list, axis=0)
+    label_list = np.concatenate(label_list, axis=0)
+    res = {'pred': pred_list, 'label': label_list}
+    res = pd.DataFrame(res)
+    #res.to_csv(probsavepath,index=False) #保存预测结果
 
-        if(len(edgelist)==369*2):
-            pred_list.append(test_pred_y.numpy()[:minNum])
-            label_list.append(test_labels.numpy()[:minNum])
-        else:
-            if len(test_pred_y) == (len(edgelist)//5):
-                pred_list.append(test_pred_y.numpy())
-                label_list.append(test_labels.numpy())
-            elif len(test_pred_y)>len(edgelist)//5:
-                pred_list.append(test_pred_y.numpy()[:len(edgelist)//5])
-                label_list.append(test_labels.numpy()[:len(edgelist)//5])
-
-
-
-
-    pred_res = np.array(pred_list)
-    label_res = np.array(label_list)
-    res = np.concatenate([pred_res,label_res],axis=0)
-    names = []
-    [names.append('pred ' + str(i + 1)) for i in range(5)]
-    [names.append('label ' + str(i + 1)) for i in range(5)]
-    res = pd.DataFrame(res.T,columns = names)
-    res.to_csv(probsavepath,index=False)
-
-
-    print("average accuracy:"+str(np.mean(valid_acc)))
-    print(valid_acc)
-    print("average precision:" + str(np.mean(valid_pre)))
-    print(valid_pre)
-    print("average sensitivity:" + str(np.mean(valid_sen)))
-    print(valid_sen)
-    print("average specificity:" + str(np.mean(valid_spe)))
-    print(valid_spe)
-    print("average MCC:" + str(np.mean(valid_MCC)))
-    print(valid_MCC)
-    print("average FPR:" + str(np.mean(valid_FPR)))
-    print(valid_FPR)
-    print("average TPR:" + str(np.mean(valid_TPR)))
-    print(valid_TPR)
-    print("average AUC:"+str(np.mean(valid_AUC)))
-    print(valid_AUC)
-
+    final_AUC = AUC(label_list, pred_list)
+    final_ACC, final_Sen, final_Spe, final_Pre, final_MCC, final_FPR = performance(tps, tns, fps, fns)
+    print("The final performance of RPI-RGCNAE is:")
+    print("ACC: {}, Sen: {}, Spe: {}, Pre: {}, MCC: {}, FPR: {}, AUC: {}".format(final_ACC, final_Sen, final_Spe,
+                                                                                 final_Pre, final_MCC, final_FPR,
+                                                                                 final_AUC))
+    '''
     sheet = open(metricssavepath, 'a')
-    sheet.write(
-        str('average'+','+str(np.mean(valid_acc))) + "," + str(np.mean(valid_pre)) + "," + str(np.mean(valid_sen)) + "," + str(np.mean(valid_spe)) + "," + str(np.mean(valid_MCC)) + "," +
-        str(np.mean(valid_FPR)) + "," + str(np.mean(valid_TPR)) + "," + str(np.mean(valid_AUC)) + "\n")
+    sheet.write(str(final_ACC) + "," + str(final_Sen) + "," + str(final_Spe) + "," + str(final_Pre) + "," + str(
+        final_MCC) + "," +
+                str(final_FPR) + "," + str(final_AUC) + "\n")
     sheet.close()
+    '''
+
 
 
 def compare_different_achitectures(filepath, savepath, INI_PATH):
@@ -411,7 +319,6 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
         gamma = config.getfloat(DATA_SET, 'gamma')
         EPOCHS = config.getint(DATA_SET, 'EPOCHS')
         SIDE_FEATURE_DIM = config.getint(DATA_SET, 'SIDE_FEATURE_DIM')
-
 
         structure = {'NODE_INPUT_DIM': [128, 256, 512, 1024],
                      'GCN_HIDDEN_DIM': [64, 128, 256, 512],
@@ -440,7 +347,7 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=1, EPOCHS=EPOCHS,
                       gamma=gamma,
                       probsavepath='',
-                      metricssavepath=savepath + DATA_SET + "/parameter/prob_" + s + "_sort_stack_random_side.csv",
+                      metricssavepath=savepath + DATA_SET + "/parameter/metrics_" + s + "_sort_stack_random_side.csv",
                       embedsavepath='')
 
 
@@ -463,7 +370,7 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
         ENCODE_HIDDEN_DIM = config.getint(DATA_SET, 'ENCODE_HIDDEN_DIM')
 
         negative_sample_method = ['sort']
-        accumulate_strategy = ['stack', 'sum']
+        accumulate_strategy = ['stack']
         node_feature_type = ['random', 'one hot']
         for i in negative_sample_method:
             for j in accumulate_strategy:
@@ -471,49 +378,51 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
                     if k == 'random':
                         NODE_INPUT_DIM = 1024
                     elif k == 'one hot':
-                        if DATA_SET=='RPI369':
+                        if DATA_SET == 'RPI369':
                             NODE_INPUT_DIM = 669
-                        elif DATA_SET=='NPInter_10412':
+                        elif DATA_SET == 'NPInter_10412':
                             NODE_INPUT_DIM = 5085
                     name = i + "_" + k + "_" + j
                     for t in range(10):
                         # random/one hot +side_information
                         NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                         protein_side_feature, RNA_side_feature, edgelist = \
-                            load_dataset(dataset=DATA_SET, filepath=filepath,identity_feature_dim=NODE_INPUT_DIM,
+                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,
                                          identity_feature=k, negative_random_sample=i)
 
                         train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
                               protein_side_feature,
-                              RNA_side_feature, edgelist, NODE_INPUT_DIM=NODE_INPUT_DIM, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
+                              RNA_side_feature, edgelist, NODE_INPUT_DIM=NODE_INPUT_DIM,
+                              SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
                               GCN_HIDDEN_DIM=GCN_HIDDEN_DIM, SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM,
                               ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
                               use_side_feature=True, accumulate_strategy=j,
                               threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                               DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                               gamma=gamma,
-                              probsavepath=savepath + DATA_SET + "/prob_" + name + "_side.csv",
-                              metricssavepath=savepath + DATA_SET + "/metrics_" + name + "_side.csv",
-                              embedsavepath=savepath + DATA_SET + "/embedding_protein.csv")
+                              probsavepath=savepath + DATA_SET + "/combination/prob_" + name + "_side.csv",
+                              metricssavepath=savepath + DATA_SET + "/combination/metrics_" + name + "_side.csv",
+                              embedsavepath='')
 
                         # random/one hot
                         NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                         protein_side_feature, RNA_side_feature, edgelist = \
-                            load_dataset(dataset=DATA_SET, filepath=filepath,identity_feature_dim=NODE_INPUT_DIM,
+                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,
                                          identity_feature=k, negative_random_sample=i)
 
                         train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
                               protein_side_feature,
-                              RNA_side_feature, edgelist, NODE_INPUT_DIM=NODE_INPUT_DIM, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
+                              RNA_side_feature, edgelist, NODE_INPUT_DIM=NODE_INPUT_DIM,
+                              SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
                               GCN_HIDDEN_DIM=GCN_HIDDEN_DIM, SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM,
                               ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
                               use_side_feature=False, accumulate_strategy=j,
                               threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                               DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                               gamma=gamma,
-                              probsavepath=savepath + DATA_SET + "/prob_" + name + "_withoutside.csv",
-                              metricssavepath=savepath + DATA_SET + "/metrics_" + name + "_withoutside.csv",
-                              embedsavepath=savepath + DATA_SET + "/embedding_protein.csv")
+                              probsavepath=savepath + DATA_SET + "/combination/prob_" + name + "_withoutside.csv",
+                              metricssavepath=savepath + DATA_SET + "/combination/metrics_" + name + "_withoutside.csv",
+                              embedsavepath='')
 
 
 def compare_different_layers(filepath, savepath, INI_PATH):
@@ -545,7 +454,7 @@ def compare_different_layers(filepath, savepath, INI_PATH):
                       protein_side_feature,
                       RNA_side_feature, edgelist, NODE_INPUT_DIM=1024,
                       SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
-                      GCN_HIDDEN_DIM=GCN_HIDDEN_DIM,
+                      GCN_HIDDEN_DIM=1024//(2**l),
                       SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM,
                       ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
                       use_side_feature=True, accumulate_strategy='stack',
@@ -564,29 +473,32 @@ def compare_negative_sample_methods(filepath, savepath, INI_PATH):
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
-        INITIAL_LEARNING_RATE = config.getfloat(DATA_SET, 'INITIAL_LEARNING_RATE')
-        WEIGHT_DACAY = config.getfloat(DATA_SET, 'WEIGHT_DACAY')
-        DROPOUT_RATIO = config.getfloat(DATA_SET, 'DROPOUT_RATIO')
-        step_size = config.getint(DATA_SET, 'step_size')
-        gamma = config.getfloat(DATA_SET, 'gamma')
-        layers = config.getint(DATA_SET, 'layers')
-        EPOCHS = config.getint(DATA_SET, 'EPOCHS')
-        SIDE_FEATURE_DIM = config.getint(DATA_SET, 'SIDE_FEATURE_DIM')
-        GCN_HIDDEN_DIM = config.getint(DATA_SET, 'GCN_HIDDEN_DIM')
-        SIDE_HIDDEN_DIM = config.getint(DATA_SET, 'SIDE_HIDDEN_DIM')
-        ENCODE_HIDDEN_DIM = config.getint(DATA_SET, 'ENCODE_HIDDEN_DIM')
-
         for negative_generation in ['sort', 'random', 'sort random']:
+            if negative_generation == 'random' and DATA_SET =='RPI369':
+                param_name = 'RPI369 random'
+            else:
+                param_name = DATA_SET
+            INITIAL_LEARNING_RATE = config.getfloat(param_name, 'INITIAL_LEARNING_RATE')
+            WEIGHT_DACAY = config.getfloat(param_name, 'WEIGHT_DACAY')
+            DROPOUT_RATIO = config.getfloat(param_name, 'DROPOUT_RATIO')
+            step_size = config.getint(param_name, 'step_size')
+            gamma = config.getfloat(param_name, 'gamma')
+            layers = config.getint(param_name, 'layers')
+            EPOCHS = config.getint(param_name, 'EPOCHS')
+            SIDE_FEATURE_DIM = config.getint(param_name, 'SIDE_FEATURE_DIM')
+            GCN_HIDDEN_DIM = config.getint(param_name, 'GCN_HIDDEN_DIM')
+            SIDE_HIDDEN_DIM = config.getint(param_name, 'SIDE_HIDDEN_DIM')
+            ENCODE_HIDDEN_DIM = config.getint(param_name, 'ENCODE_HIDDEN_DIM')
             for i in range(10):
                 if negative_generation == 'sort random':
                     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                     protein_side_feature, RNA_side_feature, edgelist = \
-                        load_dataset(dataset=DATA_SET, filepath=filepath,identity_feature_dim=1024,
+                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
                                      identity_feature='random', negative_random_sample='sort_random')
                 else:
                     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                     protein_side_feature, RNA_side_feature, edgelist = \
-                        load_dataset(dataset=DATA_SET, filepath=filepath,identity_feature_dim=1024,
+                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
                                      identity_feature='random', negative_random_sample=negative_generation)
 
                 train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -598,28 +510,27 @@ def compare_negative_sample_methods(filepath, savepath, INI_PATH):
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath=savepath + DATA_SET + "/prob_" + negative_generation + "_stack_random_side.csv",
-                      metricssavepath=savepath + DATA_SET + "/metrics_" + negative_generation + "_stack_random_side.csv",
-                      embedsavepath=savepath + DATA_SET + "/embedding_protein.csv")
+                      probsavepath=savepath + DATA_SET + "/negative_method/prob_" + negative_generation + "_stack_random_side.csv",
+                      metricssavepath=savepath + DATA_SET + "/negative_method/metrics_" + negative_generation + "_stack_random_side.csv",
+                      embedsavepath=savepath + DATA_SET + '')
 
 
 if __name__ == "__main__":
     start = time.time()
     print("start:{}".format(start))
     filepath = 'data/generated_data/'
-    savepath = 'result/'
-
+    savepath = 'result3.26/'
 
     INI_PATH = 'dataset_settings.ini'
     parser = argparse.ArgumentParser(
         description="""R-GCN Graph Autoencoder for NcRNA-protein Link Prediciton """)
 
     parser.add_argument('-dataset',
-                        type=str, help='choose a dataset to implement 5-fold cross validation', default='NPInter_10412')
+                        type=str, help='choose a dataset to implement 5-fold cross validation', default='NPInter_4158')
 
     args = parser.parse_args()
-    DATA_SET = args.dataset
-
+    #DATA_SET = args.dataset
+    DATA_SET = 'NPInter_10412'
 
     config = configparser.ConfigParser()
     config.read(INI_PATH)
@@ -636,8 +547,8 @@ if __name__ == "__main__":
     GCN_HIDDEN_DIM = config.getint(DATA_SET, 'GCN_HIDDEN_DIM')
     SIDE_HIDDEN_DIM = config.getint(DATA_SET, 'SIDE_HIDDEN_DIM')
     ENCODE_HIDDEN_DIM = config.getint(DATA_SET, 'ENCODE_HIDDEN_DIM')
-    
-    
+
+
     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
     protein_side_feature, RNA_side_feature, edgelist = \
         load_dataset(dataset=DATA_SET, filepath=filepath,identity_feature_dim=1024,
@@ -657,8 +568,45 @@ if __name__ == "__main__":
           embedsavepath=savepath + DATA_SET+'/embeddings')
     '''
 
-    compare_negative_sample_methods(filepath, savepath, INI_PATH)
+    #compare_negative_sample_methods(filepath, savepath, INI_PATH)
+    #compare_different_combinations(filepath, savepath, INI_PATH)
+    #compare_different_achitectures(filepath, savepath, INI_PATH)
+    #compare_different_layers(filepath, savepath, INI_PATH)
+
+    INITIAL_LEARNING_RATE = config.getfloat(DATA_SET, 'INITIAL_LEARNING_RATE')
+    WEIGHT_DACAY = config.getfloat(DATA_SET, 'WEIGHT_DACAY')
+    DROPOUT_RATIO = config.getfloat(DATA_SET, 'DROPOUT_RATIO')
+    step_size = config.getint(DATA_SET, 'step_size')
+    gamma = config.getfloat(DATA_SET, 'gamma')
+    layers = config.getint(DATA_SET, 'layers')
+    EPOCHS = config.getint(DATA_SET, 'EPOCHS')
+    SIDE_FEATURE_DIM = config.getint(DATA_SET, 'SIDE_FEATURE_DIM')
+    GCN_HIDDEN_DIM = config.getint(DATA_SET, 'GCN_HIDDEN_DIM')
+    SIDE_HIDDEN_DIM = config.getint(DATA_SET, 'SIDE_HIDDEN_DIM')
+    ENCODE_HIDDEN_DIM = config.getint(DATA_SET, 'ENCODE_HIDDEN_DIM')
+    #for i in range(10):
+    NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
+    protein_side_feature, RNA_side_feature, edgelist = \
+        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
+                     identity_feature='random', negative_random_sample='sort')
+
+    train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
+          protein_side_feature,
+          RNA_side_feature, edgelist, NODE_INPUT_DIM=1024, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
+          GCN_HIDDEN_DIM=1024//(2**1),
+          SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
+          use_side_feature=True, accumulate_strategy='stack',
+          threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
+          DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=1, EPOCHS=EPOCHS,
+          gamma=gamma,
+          probsavepath=savepath + DATA_SET + "/prob_sort_stack_random_side.csv",
+          metricssavepath=savepath + DATA_SET + "/metrics_sort_stack_random_side.csv",
+          embedsavepath='')
+
+
+
+
     end = time.time()
-    print("total {} seconds".format(end-start))
+    print("total {} seconds".format(end - start))
 
 

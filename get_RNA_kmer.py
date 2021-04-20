@@ -22,9 +22,10 @@ def read_fasta_file(fasta_file):
             # it is sequence
             seq_dict[name] = seq_dict[name] + line
     fp.close()
-    #for key,value in seq_dict.items():
-        #print(key)
-        #print(value)
+    for key,value in seq_dict.items():
+        if len(value)>10000:
+            print(key)
+            print(len(value))
     print(len(seq_dict))
     return seq_dict
 
@@ -131,7 +132,7 @@ def generated_RNA_kmer(fasta_file, savepath, k = 4):
     '''
     print(ncRNA4mer.shape)
     ncRNA4mer = pd.DataFrame(ncRNA4mer)
-    ncRNA4mer.to_csv(savepath, index=False)
+    #ncRNA4mer.to_csv(savepath, index=False)
 
 
 if __name__ == '__main__':
@@ -149,3 +150,8 @@ if __name__ == '__main__':
     generated_RNA_kmer(
         fasta_file='data/generated_data/NPInter_4158/ncRNA_extracted_seq.fasta',
         savepath='data/generated_data/NPInter_4158/ncRNA4merfeat.csv', k=4)
+
+
+
+
+

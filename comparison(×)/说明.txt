@@ -1,0 +1,5 @@
+5-fold of LPI-RGCNAE on different datasets：我们的模型在4个数据集上10次5cv的结果
+different model comparison：不同模型在四个数据集上10次5cv的平均值±STD汇总
+result：之前只有我们的模型是10次5cv的平均值，其他模型都是一次5cv的结果
+results of NPInter_4158：我们模型在4158上10次5cv的结果
+results of NPInter_1446：我们模型在1446上10次10cv的结果

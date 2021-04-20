@@ -26,7 +26,11 @@ def read_fasta_file(fasta_file):
     fp.close()
 
     print(len(seq_dict))
-
+    '''
+    for key, value in seq_dict.items():
+        print(key)
+        print(value)
+    '''
     return seq_dict
 
 def get_4_nucleotide_composition(tris, seq, pythoncount=True):
@@ -59,7 +63,7 @@ def TransDict_from_list(groups):
     # groups = ['AGV', 'ILFP', 'YMTS', 'HNQW', 'RK', 'DE', 'C']
     for group in groups:
         g_members = sorted(group)
-        print(g_members)
+        #print(g_members)
         for c in g_members:
             result[c] = str(tar_list[index])
         index = index + 1
@@ -117,7 +121,7 @@ def generated_protein_kmer(fasta_file, savepath, k = 3):
     Protein3mer = np.array(Protein3mer)
     print(Protein3mer.shape)
     Protein3mer = pd.DataFrame(Protein3mer)
-    Protein3mer.to_csv(savepath, index=False)
+    #Protein3mer.to_csv(savepath, index=False)
 
 if __name__ == '__main__':
 
@@ -136,4 +140,7 @@ if __name__ == '__main__':
     generated_protein_kmer(
         fasta_file='data/generated_data/NPInter_4158/protein_extracted_seq.fasta',
         savepath='data/generated_data/NPInter_4158/Protein3merfeat.csv', k=3)
+
+
+
 
