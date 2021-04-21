@@ -1,6 +1,7 @@
 # NPI-RGCNAE
   In this work, we used Relational Graph Convolutional 		Network Auto-Encoder(RGCNAE) to predict the interactions between ncRNA and protein.
   Under the `'data'` folder, there are two folders `'raw_data'` and `'generated_data'`, which provide the raw dataset and the data generated for our method, respectively.
+  `'src/dataset_settings.ini'` is a parameter configuration file for each dataset.
 # How to run
 The program is written in **Python 3.7** and to run the code we provide, you need to install the `requirements.txt` through inputting the following command in command line mode:
 
