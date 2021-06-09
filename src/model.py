@@ -162,7 +162,7 @@ class SumGCNEncoder(nn.Module):
         Args:
             input_dim (int): 输入的特征维度
             output_dim (int): 输出的特征维度，需要output_dim % num_support = 0
-            num_support (int): 评分的类别数，比如1~5分，值为5
+            num_support (int): 2
             use_bias (bool, optional): 是否使用偏置. Defaults to False.
             activation (optional): 激活函数. Defaults to F.relu.
         """
