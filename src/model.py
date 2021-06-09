@@ -27,7 +27,7 @@ class StackGCNEncoder(nn.Module):
         ----
             input_dim (int): 输入的特征维度
             output_dim (int): 输出的特征维度，需要output_dim % num_support = 0
-            num_support (int): 评分的类别数
+            num_support (int): 2
             use_bias (bool, optional): 是否使用偏置. Defaults to False.
             activation (optional): 激活函数. Defaults to F.relu.
         """
@@ -97,9 +97,9 @@ class StackGCNEncoder(nn.Module):
 
         Args:
             RNA_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的RNA与protein邻接矩阵
+                归一化后每个关系对应的RNA与protein邻接矩阵
             protein_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的protein与RNA邻接矩阵
+                归一化后每个关系对应的protein与RNA邻接矩阵
             RNA_inputs (torch.Tensor): RNA特征的输入
             protein_inputs (torch.Tensor): protein特征的输入
 
@@ -200,9 +200,9 @@ class SumGCNEncoder(nn.Module):
 
         Args:
             RNA_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的RNA与protein邻接矩阵
+                归一化后每个关系对应的RNA与protein邻接矩阵
             protein_supports (list of torch.sparse.FloatTensor):
-                归一化后每个评分等级对应的protein与RNA邻接矩阵
+                归一化后每个关系对应的protein与RNA邻接矩阵
             RNA_inputs (torch.Tensor): RNA特征的输入
             protein_inputs (torch.Tensor): protein特征的输入
 
