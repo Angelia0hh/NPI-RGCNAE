@@ -354,6 +354,13 @@ class Decoder(nn.Module):
         '''
         basis_outputs = []
         for i in range(self.num_classes):
+            '''
+            print("DECODER:")
+            print("RNA_inputs:{}".format(RNA_inputs.shape))
+            print("protein_inputs:{}".format(protein_inputs.shape))
+            print("relation:{}".format(self.w_relation[i,:].shape))
+            print("result:{}".format((RNA_inputs * self.w_relation[i, :] * protein_inputs).shape))
+            '''
             basis_output = torch.sum(RNA_inputs * self.w_relation[i, :] * protein_inputs, dim=1, keepdim=True)
             basis_outputs.append(basis_output)
         basis_outputs = torch.cat(basis_outputs, dim=1)

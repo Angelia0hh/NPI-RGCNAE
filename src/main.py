@@ -329,7 +329,7 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=1, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath='',
+                      probsavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"prob_" + s + "_sort_stack_random_side.csv",
                       metricssavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"metrics_" + s + "_sort_stack_random_side.csv",
                       embedsavepath='')
 
@@ -337,7 +337,8 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
 def compare_different_combinations(filepath, savepath, INI_PATH):
     print("compare_different_combinations is running")
     # 不同特征对比组合
-    for DATA_SET in ['NPInter_10412', 'RPI369']:
+    #for DATA_SET in ['NPInter_10412', 'RPI369']:
+    for DATA_SET in ['RPI7317','RPI2241']:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
@@ -355,7 +356,8 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
 
         negative_sample_method = ['sort']
         accumulate_strategy = ['stack']
-        node_feature_type = ['random', 'one hot']
+        #node_feature_type = ['random', 'one hot']
+        node_feature_type = ['random']
         for i in negative_sample_method:
             for j in accumulate_strategy:
                 for k in node_feature_type:
@@ -384,8 +386,8 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
                               threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                               DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                               gamma=gamma,
-                              probsavepath=savepath + DATA_SET + "/combination/prob_" + name + "_side.csv",
-                              metricssavepath=savepath + DATA_SET + "/combination/metrics_" + name + "_side.csv",
+                              probsavepath=savepath+os.sep+ DATA_SET +os.sep+ "combination"+os.sep+"prob_" + name + "_side.csv",
+                              metricssavepath=savepath +os.sep+ DATA_SET +os.sep+ "combination"+os.sep+"metrics_" + name + "_side.csv",
                               embedsavepath='')
 
                         # random/one hot
@@ -404,15 +406,16 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
                               threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                               DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                               gamma=gamma,
-                              probsavepath=savepath +os.sep+ DATA_SET +os.sep +"combination/prob_" + name + "_withoutside.csv",
-                              metricssavepath=savepath + os.sep+DATA_SET + os.sep+"combination/metrics_" + name + "_withoutside.csv",
+                              probsavepath=savepath +os.sep+ DATA_SET +os.sep +"combination"+os.sep+"prob_" + name + "_withoutside.csv",
+                              metricssavepath=savepath + os.sep+DATA_SET + os.sep+"combination"+os.sep+"metrics_" + name + "_withoutside.csv",
                               embedsavepath='')
 
 
 def compare_different_layers(filepath, savepath, INI_PATH):
     print("compare_different_layers is running")
     # 比较不同的层数
-    for DATA_SET in ['NPInter_10412', 'RPI369']:
+    #for DATA_SET in ['NPInter_10412', 'RPI369']:
+    for DATA_SET in ['RPI7317', 'RPI2241']:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
@@ -446,8 +449,9 @@ def compare_different_layers(filepath, savepath, INI_PATH):
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=l, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath='',
-                      metricssavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter" + str(
+                      probsavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"prob_" + str(
+                          l) + " layers_sort_stack_random_side.csv",
+                      metricssavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"metrics_" + str(
                           l) + " layers_sort_stack_random_side.csv",
                       embedsavepath='')
 
@@ -496,8 +500,8 @@ def compare_negative_sample_methods(filepath, savepath, INI_PATH):
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath=savepath +os.sep+ DATA_SET + os.sep+"negative_method/prob_" + negative_generation + "_stack_random_side.csv",
-                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"negative_method/metrics_" + negative_generation + "_stack_random_side.csv",
+                      probsavepath=savepath +os.sep+ DATA_SET + os.sep+"negative_method"+os.sep+"prob_" + negative_generation + "_stack_random_side.csv",
+                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"negative_method"+os.sep+"metrics_" + negative_generation + "_stack_random_side.csv",
                       embedsavepath=savepath + DATA_SET + '')
 
 
