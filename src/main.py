@@ -338,7 +338,7 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
     print("compare_different_combinations is running")
     # 不同特征对比组合
     #for DATA_SET in ['NPInter_10412', 'RPI369']:
-    for DATA_SET in ['RPI7317','RPI2241']:
+    for DATA_SET in ['RPI7317','RPI2241','NPInter_10412', 'RPI369']:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
@@ -415,7 +415,7 @@ def compare_different_layers(filepath, savepath, INI_PATH):
     print("compare_different_layers is running")
     # 比较不同的层数
     #for DATA_SET in ['NPInter_10412', 'RPI369']:
-    for DATA_SET in ['RPI7317', 'RPI2241']:
+    for DATA_SET in ['RPI7317', 'RPI2241','NPInter_10412', 'RPI369']:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
