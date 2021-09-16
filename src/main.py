@@ -590,8 +590,8 @@ def single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_r
               threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
               DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
               gamma=gamma,
-              probsavepath= os.path.join(savepath,DATA_SET + os.sep+"prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
-              metricssavepath=os.path.join(savepath, DATA_SET +os.sep +"metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
+              probsavepath= os.path.join(savepath,DATA_SET + os.sep+"single_prediction"+os.sep+"prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
+              metricssavepath=os.path.join(savepath, DATA_SET +os.sep +"single_prediction"+os.sep+"metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
               embedsavepath='')
         print("\n")
 
