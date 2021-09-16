@@ -1,14 +1,14 @@
-import itertools
-import numpy as np
+
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import os
 import pandas as pd
-from pandas import DataFrame
+
 
 
 plt.rc('font',family='Times New Roman')
 res_path = '..\\results\\NPInter_10412\\combination\\'
+#res_path = 'D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\NPInter_10412\\combination\\'
 def calculate_coordinate(res_path = 'results\\NPInter_10412\\combination\\'):
     path_list = []
     files = []
@@ -57,6 +57,12 @@ mps1 = calculate_coordinate('..\\results\\RPI2241\\combination\\')
 mps2 =  calculate_coordinate('..\\results\\RPI7317\\combination\\')
 mps3 = calculate_coordinate('..\\results\\NPInter_10412\\combination\\')
 mps4 = calculate_coordinate('..\\results\\RPI369\\combination\\')
+'''
+mps1 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI2241\\combination\\')
+mps2 =  calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI7317\\combination\\')
+mps3 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\NPInter_10412\\combination\\')
+mps4 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI369\\combination\\')
+'''
 # 所有的方法汇总画图
 plt.figure(figsize=(16,12), dpi=600,facecolor=(1, 1, 1))
 plt.tight_layout()
@@ -73,9 +79,9 @@ for label,data in mps1.items():
 
         comb = label.split('_')
         if label.endswith("withoutside"):
-            plt.plot(fpr, tpr,label= "without side information \n features" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "without sequence-based features\n" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         elif label.endswith('side'):
-            plt.plot(fpr, tpr,label= "with side information \n features" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "with sequence-based features\n" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         '''
         elif label.endswith('sum_withoutside'):
             plt.plot(fpr, tpr,label=comb[1]+"+"+comb[3] + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
@@ -88,9 +94,10 @@ plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
 plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
 plt.ylim([-0.05, 1.05])
+plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
 plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
-plt.title('(a)',fontsize=11,loc='center',y=-0.15)
+plt.title('(a)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
 
@@ -103,17 +110,18 @@ for label, data in mps2.items():
     if label in names:
         comb = label.split('_')
         if label.endswith("withoutside"):
-            plt.plot(fpr, tpr, label="without side information \n features" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr, label="without sequence-based features\n" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         elif label.endswith('side'):
-            plt.plot(fpr, tpr, label="with side information \n features"+ ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr, label="with sequence-based features\n"+ ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
 
 plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
 plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
 plt.ylim([-0.05, 1.05])
+plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate', fontsize=14)
 plt.ylabel('True Positive Rate', fontsize=14)
-plt.title('(b)',fontsize=11,loc='center',y=-0.15)
+plt.title('(b)',fontsize=14,loc='center',y=-0.2)
 # plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right", fontsize=15)
 
@@ -126,9 +134,9 @@ for label,data in mps3.items():
 
         comb = label.split('_')
         if label.endswith("withoutside"):
-            plt.plot(fpr, tpr,label= "without side information \n features" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "without sequence-based features\n" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         elif label.endswith('side'):
-            plt.plot(fpr, tpr,label= "with side information \n features" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "with sequence-based features\n" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         '''
         elif label.endswith('sum_withoutside'):
             plt.plot(fpr, tpr,label=comb[1]+"+"+comb[3] + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
@@ -141,9 +149,10 @@ plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
 plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
 plt.ylim([-0.05, 1.05])
+plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
 plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
-plt.title('(c)',fontsize=11,loc='center',y=-0.15)
+plt.title('(c)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
 
@@ -157,9 +166,9 @@ for label,data in mps4.items():
 
         comb = label.split('_')
         if label.endswith("withoutside"):
-            plt.plot(fpr, tpr,label= "without side information \n features" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "without sequence-based features\n" +' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         elif label.endswith('side'):
-            plt.plot(fpr, tpr,label= "with side information \n features" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
+            plt.plot(fpr, tpr,label= "with sequence-based features\n" + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
         '''
         elif label.endswith('sum_withoutside'):
             plt.plot(fpr, tpr,label=comb[1]+"+"+comb[3] + ' (area = {0:.3f})'.format(auc(fpr, tpr)), lw=1)
@@ -172,11 +181,12 @@ plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
 plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
 plt.ylim([-0.05, 1.05])
+plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
 plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
-plt.title('(d)',fontsize=11,loc='center',y=-0.15)
+plt.title('(d)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
 
-plt.savefig('D:\一堆文件\w\RPI-RGCNAE\jbhi-0612\Fig3.tif',bbox_inches='tight')
+plt.savefig('results\\Fig3.svg',bbox_inches='tight')
 plt.show()
