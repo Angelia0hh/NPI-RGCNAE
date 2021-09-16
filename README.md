@@ -22,6 +22,11 @@ The meanings of parameters:
 | |compare_different_combinations|compare the performance of *"node embeddings + k-mer"* and *"node embeddings"* two different feature combinations on RPI369, RPI2241,RPI7317 and NPInter10412.|
 | |compare_different_layers |compare the performance of R-GCN layers varying from 1 to 4 on RPI369, RPI2241,RPI7317 and NPInter10412.
 | |compare_negative_sample_methods |compare the performance of three different negative sample generation methods on RPI369, RPI2241,RPI7317 and NPInter10412.
+| |timeAnalysis|calculate the runnning time on different datasets. <br>For RPI7317,RPI369,RPI2241, and NPInter_10412 datasets, the input parameter 'negative_random_sample' can be 'sort', 'sort_random', 'random'.</br>
+<br>For NPInter_10412_0.2,NPInter_10412_0.4,NPInter_10412_0.6,NPInter_10412_0.8, the input parameter 'negative_random_sample' can be the randomly sampling proportion, 0.2,0.4,0.6, and 0.8.</br>
+For example,
+```bash
+>python src/main.py -method timeAnalysis -dataset  NPInter_10412_0.4 -negative_random_sample 0.4
 |**dataset name** |	<br>RPI369</br> 	<br>RPI2241</br> 	<br>RPI7317</br><br> NPInter_10412</br><br> NPInter_4158</br> |
 |**negative_generation name** |<br>random</br><br>sort_random</br><br>sort</br>|Please refer to our paper for the specific meaning of the above parameters. 
 |**the number of layers** |1,2,3,4|the number of R-GCN layers
@@ -32,4 +37,4 @@ The meanings of parameters:
 For example,
 
 ```bash
->python src/main.py -method single_dataset_prediction -dataset RPI369  -negative_random_sample sort_random -layers 1 -with_side_information True
+>python src/main.py -method single_dataset_prediction -dataset RPI369  -negative_random_sample sort -layers 1 -with_side_information False
