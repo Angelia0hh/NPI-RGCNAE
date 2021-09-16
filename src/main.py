@@ -32,7 +32,7 @@ torch.backends.cudnn.benchmark = False
 '''
 
 
-def load_dataset(dataset, filepath, identity_feature, negative_random_sample, identity_feature_dim=1024):
+def load_dataset(dataset, filepath, identity_feature, negative_random_sample, identity_feature_dim=1024, use_side_feature = False):
 
     filepath = os.path.join(filepath,dataset)
     NPI_pos_matrix = pd.read_csv(os.path.join(filepath,'NPI_pos.csv'), header=None).values
@@ -43,11 +43,14 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample, id
 
     NPI_neg_matrix = pd.read_csv(os.path.join(filepath,"NPI_neg_" + negative_random_sample + ".csv"), header=None).values
     edgelist = pd.read_csv(os.path.join(filepath,'edgelist_' + negative_random_sample + '.csv'), header=None)
+    protein_side_feature = []
+    RNA_side_feature = []
 
-    protein_side_feature = pd.read_csv( os.path.join(filepath, 'Protein3merfeat.csv')).values
-    RNA_side_feature = pd.read_csv(os.path.join(filepath,'ncRNA4merfeat.csv')).values
-    supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
-    RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+    if use_side_feature:
+        protein_side_feature = pd.read_csv( os.path.join(filepath, 'Protein3merfeat.csv')).values
+        RNA_side_feature = pd.read_csv(os.path.join(filepath,'ncRNA4merfeat.csv')).values
+        supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
+        RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
 
     if (identity_feature == 'one hot'):
         identity_feature = np.identity(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], dtype=np.float32)
@@ -65,6 +68,54 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample, id
     return NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, \
            RNA_identity_feature, protein_side_feature, RNA_side_feature, edgelist
 
+
+def loadData(dataset, filepath, identity_feature, partition, identity_feature_dim, use_side_information = False):
+    filepath = os.path.join(filepath, dataset)
+    if "_0." not in dataset:
+        NPI_pos_matrix = pd.read_csv(os.path.join(filepath, 'NPI_pos.csv'), header=None).values
+        NPI_neg_matrix = pd.read_csv(os.path.join(filepath, "NPI_neg_" + negative_random_sample + ".csv"),
+                                     header=None).values
+        edgelist = pd.read_csv(os.path.join(filepath, 'edgelist_' + negative_random_sample + '.csv'), header=None)
+        protein_side_feature = []
+        RNA_side_feature = []
+        if use_side_information:
+            protein_side_feature = pd.read_csv(os.path.join(filepath, 'Protein3merfeat.csv')).values
+            RNA_side_feature = pd.read_csv(os.path.join(filepath, 'ncRNA4merfeat.csv')).values
+            supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
+            RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+    else:
+        NPI_pos_matrix = pd.read_csv(os.path.join(filepath, 'NPI_pos'+str(partition)+'.csv'), header=None).values
+        NPI_neg_matrix = pd.read_csv(os.path.join(filepath, "NPI_neg" +str(partition) + ".csv"),
+                                     header=None).values
+        edgelist = pd.read_csv(os.path.join(filepath, 'edgelist' + str(partition) + '.csv'), header=None)
+        protein_side_feature = []
+        RNA_side_feature = []
+        if use_side_information:
+            protein_side_feature = pd.read_csv(os.path.join(filepath, 'protein3merfeat'+str(partition)+'.csv')).values
+            RNA_side_feature = pd.read_csv(os.path.join(filepath, 'rna4merfeat'+str(partition)+'.csv')).values
+            supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
+            RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+    name = ['index']
+    for i in range(1024):
+        name.append(i + 1)
+
+
+
+    if (identity_feature == 'one hot'):
+        identity_feature = np.identity(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], dtype=np.float32)
+        RNA_identity_feature, protein_identity_feature = identity_feature[
+                                                         :NPI_pos_matrix.shape[0]], identity_feature[
+                                                                                    NPI_pos_matrix.shape[0]:]
+    # elif (identity_feature == 'node2vec'):
+    # emb.sort_values('index', inplace=True)  # 按index排序
+    # emb = emb[list(range(1, 1025))].values
+    # RNA_identity_feature, protein_identity_feature = emb[:NPI_pos_matrix.shape[0]], emb[NPI_pos_matrix.shape[0]:]
+    elif (identity_feature == 'random'):
+        feature = np.random.randn(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], identity_feature_dim)
+        RNA_identity_feature, protein_identity_feature = feature[:NPI_pos_matrix.shape[0]], feature[
+                                                                                            NPI_pos_matrix.shape[0]:]
+    return NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, \
+           RNA_identity_feature, protein_side_feature, RNA_side_feature, edgelist
 
 def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, protein_side_feature,
           RNA_side_feature, edgelist,
@@ -113,12 +164,13 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
     train_data, test_data = get_k_fold_data(5, edgelist)
 
     # 训练时计算所有的样本对的得分，但是只有训练集中的通过loss进行优化
-    RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
-    protein_side_feature = tensor_from_numpy(protein_side_feature, DEVICE).float()
+    if use_side_feature:
+        RNA_side_feature = tensor_from_numpy(RNA_side_feature, DEVICE).float()
+        protein_side_feature = tensor_from_numpy(protein_side_feature, DEVICE).float()
     RNA_identity_feature = tensor_from_numpy(RNA_identity_feature, DEVICE).float()
     protein_identity_feature = tensor_from_numpy(protein_identity_feature, DEVICE).float()
-    nc_num = RNA_side_feature.shape[0]
-    pr_num = protein_side_feature.shape[0]
+    nc_num = RNA_identity_feature.shape[0]
+    pr_num = protein_identity_feature.shape[0]
 
     for i in range(5):
         plot_train_loss = []
@@ -291,7 +343,7 @@ def train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity
 def compare_different_achitectures(filepath, savepath, INI_PATH):
     print("compare_different_achitectures is running")
     # 比较不同的网络结构
-    for DATA_SET in ['NPInter_10412', 'RPI369']:
+    for DATA_SET in ['NPInter_10412', 'RPI369','RPI2241','RPI7317']:
         config = configparser.ConfigParser()
         config.read(INI_PATH)
 
@@ -325,12 +377,12 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
                       GCN_HIDDEN_DIM=structure['GCN_HIDDEN_DIM'][c],
                       SIDE_HIDDEN_DIM=structure['SIDE_HIDDEN_DIM'][c],
                       ENCODE_HIDDEN_DIM=structure['ENCODE_HIDDEN_DIM'][c],
-                      use_side_feature=True, accumulate_strategy='stack',
+                      use_side_feature=False, accumulate_strategy='stack',
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=1, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"prob_" + s + "_sort_stack_random_side.csv",
-                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"metrics_" + s + "_sort_stack_random_side.csv",
+                      probsavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"prob_" + s + "_sort_stack_random_withoutside.csv",
+                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"parameter"+os.sep+"metrics_" + s + "_sort_stack_random_withoutside.csv",
                       embedsavepath='')
 
 
@@ -445,14 +497,14 @@ def compare_different_layers(filepath, savepath, INI_PATH):
                       GCN_HIDDEN_DIM=1024//(2**l),
                       SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM,
                       ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
-                      use_side_feature=True, accumulate_strategy='stack',
+                      use_side_feature=False, accumulate_strategy='stack',
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=l, EPOCHS=EPOCHS,
                       gamma=gamma,
                       probsavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"prob_" + str(
-                          l) + " layers_sort_stack_random_side.csv",
+                          l) + " layers_sort_stack_random_withoutside.csv",
                       metricssavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"metrics_" + str(
-                          l) + " layers_sort_stack_random_side.csv",
+                          l) + " layers_sort_stack_random_withoutside.csv",
                       embedsavepath='')
 
 
@@ -496,12 +548,12 @@ def compare_negative_sample_methods(filepath, savepath, INI_PATH):
                       RNA_side_feature, edgelist, NODE_INPUT_DIM=1024, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
                       GCN_HIDDEN_DIM=GCN_HIDDEN_DIM,
                       SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
-                      use_side_feature=True, accumulate_strategy='stack',
+                      use_side_feature=False, accumulate_strategy='stack',
                       threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
                       gamma=gamma,
-                      probsavepath=savepath +os.sep+ DATA_SET + os.sep+"negative_method"+os.sep+"prob_" + negative_generation + "_stack_random_side.csv",
-                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"negative_method"+os.sep+"metrics_" + negative_generation + "_stack_random_side.csv",
+                      probsavepath=savepath +os.sep+ DATA_SET + os.sep+"negative_method"+os.sep+"prob_" + negative_generation + "_stack_random_withoutside.csv",
+                      metricssavepath=savepath +os.sep +DATA_SET +os.sep +"negative_method"+os.sep+"metrics_" + negative_generation + "_stack_random_withoutside.csv",
                       embedsavepath=savepath + DATA_SET + '')
 
 
@@ -528,7 +580,45 @@ def single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_r
     protein_side_feature, RNA_side_feature, edgelist = \
         load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
                      identity_feature='random', negative_random_sample=negative_random_sample)
+    for i in range(10):
+        train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
+              protein_side_feature,
+              RNA_side_feature, edgelist, NODE_INPUT_DIM=1024, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
+              GCN_HIDDEN_DIM=1024 // (2 ** layers),
+              SIDE_HIDDEN_DIM=SIDE_HIDDEN_DIM, ENCODE_HIDDEN_DIM=ENCODE_HIDDEN_DIM,
+              use_side_feature=with_side_information, accumulate_strategy='stack',
+              threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
+              DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
+              gamma=gamma,
+              probsavepath= os.path.join(savepath,DATA_SET + os.sep+"prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
+              metricssavepath=os.path.join(savepath, DATA_SET +os.sep +"metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
+              embedsavepath='')
+        print("\n")
 
+
+def timeAnalysis(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, layers,
+                              with_side_information):
+    print("timeAnalysis is runnning")
+    print("dataset = {}, negative_random_sample = {}, layers = {}, with_side_information = {}".format(DATA_SET,
+                                                                                                      negative_random_sample,
+                                                                                                      layers,
+                                                                                                      with_side_information))
+    config = configparser.ConfigParser()
+    config.read(INI_PATH)
+    INITIAL_LEARNING_RATE = config.getfloat(DATA_SET, 'INITIAL_LEARNING_RATE')
+    WEIGHT_DACAY = config.getfloat(DATA_SET, 'WEIGHT_DACAY')
+    DROPOUT_RATIO = config.getfloat(DATA_SET, 'DROPOUT_RATIO')
+    step_size = config.getint(DATA_SET, 'step_size')
+    gamma = config.getfloat(DATA_SET, 'gamma')
+    EPOCHS = config.getint(DATA_SET, 'EPOCHS')
+    SIDE_FEATURE_DIM = config.getint(DATA_SET, 'SIDE_FEATURE_DIM')
+    #GCN_HIDDEN_DIM = config.getint(DATA_SET, 'GCN_HIDDEN_DIM')
+    SIDE_HIDDEN_DIM = config.getint(DATA_SET, 'SIDE_HIDDEN_DIM')
+    ENCODE_HIDDEN_DIM = config.getint(DATA_SET, 'ENCODE_HIDDEN_DIM')
+    WITH_SIDE = "side" if with_side_information else "withoutside"
+    NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
+    protein_side_feature, RNA_side_feature, edgelist = \
+        loadData(dataset=DATA_SET, filepath=filepath, identity_feature='random', partition = negative_random_sample, identity_feature_dim=1024)
     train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
           protein_side_feature,
           RNA_side_feature, edgelist, NODE_INPUT_DIM=1024, SIDE_FEATURE_DIM=SIDE_FEATURE_DIM,
@@ -538,9 +628,14 @@ def single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_r
           threshold=0, INITIAL_LEARNING_RATE=INITIAL_LEARNING_RATE, WEIGHT_DACAY=WEIGHT_DACAY,
           DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
           gamma=gamma,
-          probsavepath= os.path.join(savepath,DATA_SET + os.sep+"prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
-          metricssavepath=os.path.join(savepath, DATA_SET +os.sep +"metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(layers) + ".csv"),
+          probsavepath=os.path.join(savepath,
+                                    DATA_SET + os.sep + "prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
+                                        layers) + ".csv"),
+          metricssavepath=os.path.join(savepath,
+                                       DATA_SET + os.sep + "metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
+                                           layers) + ".csv"),
           embedsavepath='')
+
 
 if __name__ == "__main__":
     start = time.time()
@@ -560,7 +655,7 @@ if __name__ == "__main__":
                         default='sort')
     parser.add_argument('-layers',
                         type=int, default=1)
-    parser.add_argument('-with_side_information',type = bool,default=True)
+    parser.add_argument('-with_side_information',type = bool,default=False)
 
     args = parser.parse_args()
     method = args.method
@@ -577,7 +672,8 @@ if __name__ == "__main__":
         compare_negative_sample_methods(filepath, savepath, INI_PATH)
     elif method  == "single_dataset_prediction":
         single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, layers, with_side_information)
-
+    elif method == 'timeAnalysis':
+        timeAnalysis(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, 1, False)
     end = time.time()
     print("total {} seconds".format(end - start))
 
