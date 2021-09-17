@@ -507,9 +507,9 @@ def compare_different_layers(filepath, savepath, INI_PATH):
                       DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=l, EPOCHS=EPOCHS,
                       gamma=gamma,
                       probsavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"prob_" + str(
-                          l) + " layers_sort_stack_random_withoutside.csv",
+                          l) + " _layers_sort_stack_random_withoutside.csv",
                       metricssavepath=savepath +os.sep +DATA_SET +os.sep+ "parameter"+os.sep+"metrics_" + str(
-                          l) + " layers_sort_stack_random_withoutside.csv",
+                          l) + " _layers_sort_stack_random_withoutside.csv",
                       embedsavepath='')
 
 
@@ -635,10 +635,10 @@ def timeAnalysis(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample,
           DROPOUT_RATIO=DROPOUT_RATIO, step_size=step_size, layers=layers, EPOCHS=EPOCHS,
           gamma=gamma,
           probsavepath=os.path.join(savepath,
-                                    DATA_SET + os.sep + "prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
+                                     "timeAnalysis_prob_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
                                         layers) + ".csv"),
           metricssavepath=os.path.join(savepath,
-                                       DATA_SET + os.sep + "metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
+                                        "timeAnalysis_metrics_" + negative_random_sample + "_stack_random_" + WITH_SIDE + "_" + str(
                                            layers) + ".csv"),
           embedsavepath='')
 
