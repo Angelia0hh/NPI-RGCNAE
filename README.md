@@ -26,7 +26,7 @@ The meanings of parameters:
 |**dataset name** |	<br>RPI369</br> 	<br>RPI2241</br> 	<br>RPI7317</br><br> NPInter_10412</br><br> NPInter_4158</br> |
 |**negative_generation name** |<br>random</br><br>sort_random</br><br>sort</br>|<p align="left">Please refer to our paper for the specific meaning of the above parameters.</p> 
 |**the number of layers** |1,2,3,4|<p align="left">The number of R-GCN layers.</p>
-|**side information**|True or False|<p align="left">Means whether use side information as part of the node feature.</p>
+|**side information**|True or False|<p align="left">Means whether use sequence-based features as part of the node feature.</p>
 
 For 'compare_different_combinations', 'compare_different_layers', and 'compare_negative_sample_methods', the parameters are default and no additional input is required.
 
