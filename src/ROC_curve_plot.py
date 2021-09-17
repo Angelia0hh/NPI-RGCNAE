@@ -7,7 +7,7 @@ import pandas as pd
 
 
 plt.rc('font',family='Times New Roman')
-res_path = '..'+os.sep+'results'+os.sep+'NPInter_10412'+os.sep+'combination'+os.sep
+res_path = '..\\results\\NPInter_10412\\combination\\'
 #res_path = 'D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\NPInter_10412\\combination\\'
 def calculate_coordinate(res_path = 'results\\NPInter_10412\\combination\\'):
     path_list = []
@@ -43,26 +43,24 @@ def calculate_coordinate(res_path = 'results\\NPInter_10412\\combination\\'):
         mps[files[i][5:-4]] = (fpr, tpr)
         '''
         plt.plot(mean_fpr, mean_tpr, 'k--', label='Mean ROC (area = {0:.4f})'.format(mean_auc), lw=2)
-        plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
+        plt.xlim([-0.05, 1.05])  # 
         plt.ylim([-0.05, 1.05])
         plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')  # 可以使用中文，但需要导入一些库即字体
+        plt.ylabel('True Positive Rate')  # 
         plt.title('{}'.format(files[i][5:-4]))
         plt.legend(loc="lower right")
         plt.show()
         '''
     #print(mps)
     return mps
-mps1 = calculate_coordinate('..'+os.sep+'results'+os.sep+'RPI2241'+os.sep+'combination'+os.sep)
-mps2 =  calculate_coordinate('..'+os.sep+'results'+os.sep+'RPI7317'+os.sep+'combination'+os.sep)
-mps3 = calculate_coordinate('..'+os.sep+'results'+os.sep+'NPInter_10412'+os.sep+'combination'+os.sep)
-mps4 = calculate_coordinate('..'+os.sep+'results'+os.sep+'RPI369'+os.sep+'combination'+os.sep)
-'''
-mps1 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI2241\\combination\\')
-mps2 =  calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI7317\\combination\\')
-mps3 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\NPInter_10412\\combination\\')
-mps4 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI369\\combination\\')
-'''
+mps1 = calculate_coordinate('..\\results\\RPI2241\\combination\\')
+mps2 =  calculate_coordinate('..\\results\\RPI7317\\combination\\')
+mps3 = calculate_coordinate('..\\results\\NPInter_10412\\combination\\')
+mps4 = calculate_coordinate('..\\results\\RPI369\\combination\\')
+#mps1 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI2241\\combination\\')
+#mps2 =  calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI7317\\combination\\')
+#mps3 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\NPInter_10412\\combination\\')
+#mps4 = calculate_coordinate('D:\\PycharmProject\\NPI-RGCNAE\\result_8.30\\RPI369\\combination\\')
 # 所有的方法汇总画图
 plt.figure(figsize=(16,12), dpi=600,facecolor=(1, 1, 1))
 plt.tight_layout()
@@ -92,11 +90,11 @@ for label,data in mps1.items():
 
 plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
-plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
+plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，
 plt.ylim([-0.05, 1.05])
 plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
-plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
+plt.ylabel('True Positive Rate',fontsize=14)  
 plt.title('(a)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
@@ -116,7 +114,7 @@ for label, data in mps2.items():
 
 plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
-plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
+plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限
 plt.ylim([-0.05, 1.05])
 plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate', fontsize=14)
@@ -147,11 +145,11 @@ for label,data in mps3.items():
 
 plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
-plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
+plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限
 plt.ylim([-0.05, 1.05])
 plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
-plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
+plt.ylabel('True Positive Rate',fontsize=14)  
 plt.title('(c)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
@@ -179,14 +177,14 @@ for label,data in mps4.items():
 
 plt.plot([0, 1], [0, 1], 'k--', label='Luck')  # 画对角线
 
-plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限，设置宽一点，以免和边缘重合，可以更好的观察图像的整体
+plt.xlim([-0.05, 1.05])  # 设置x、y轴的上下限
 plt.ylim([-0.05, 1.05])
 plt.tick_params(labelsize=14)
 plt.xlabel('False Positive Rate',fontsize=14)
-plt.ylabel('True Positive Rate',fontsize=14)  # 可以使用中文，但需要导入一些库即字体
+plt.ylabel('True Positive Rate',fontsize=14) 
 plt.title('(d)',fontsize=14,loc='center',y=-0.2)
 #plt.legend(fontsize=7,bbox_to_anchor=(1, 0), loc=3, borderaxespad=0)
 plt.legend(loc="lower right",fontsize=15)
 
-plt.savefig('..'+os.sep+'results'+os.sep+'Fig3.svg',bbox_inches='tight')
+plt.savefig('../figures/Fig.3.tif',bbox_inches='tight')
 plt.show()
