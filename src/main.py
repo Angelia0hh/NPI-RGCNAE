@@ -32,8 +32,8 @@ torch.backends.cudnn.benchmark = False
 '''
 
 
-def load_dataset(dataset, filepath, identity_feature, negative_random_sample, identity_feature_dim=1024, use_side_feature = False):
-
+def load_dataset(dataset, filepath, identity_feature, negative_random_sample, use_side_feature, identity_feature_dim=1024):
+    print(use_side_feature)
     filepath = os.path.join(filepath,dataset)
     NPI_pos_matrix = pd.read_csv(os.path.join(filepath,'NPI_pos.csv'), header=None).values
 
@@ -43,14 +43,15 @@ def load_dataset(dataset, filepath, identity_feature, negative_random_sample, id
 
     NPI_neg_matrix = pd.read_csv(os.path.join(filepath,"NPI_neg_" + negative_random_sample + ".csv"), header=None).values
     edgelist = pd.read_csv(os.path.join(filepath,'edgelist_' + negative_random_sample + '.csv'), header=None)
-    protein_side_feature = []
-    RNA_side_feature = []
 
     if use_side_feature:
         protein_side_feature = pd.read_csv( os.path.join(filepath, 'Protein3merfeat.csv')).values
         RNA_side_feature = pd.read_csv(os.path.join(filepath,'ncRNA4merfeat.csv')).values
         supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
         RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+    else:
+        protein_side_feature = []
+        RNA_side_feature = []
 
     if (identity_feature == 'one hot'):
         identity_feature = np.identity(NPI_pos_matrix.shape[0] + NPI_pos_matrix.shape[1], dtype=np.float32)
@@ -76,25 +77,29 @@ def loadData(dataset, filepath, identity_feature, partition, identity_feature_di
         NPI_neg_matrix = pd.read_csv(os.path.join(filepath, "NPI_neg_" + negative_random_sample + ".csv"),
                                      header=None).values
         edgelist = pd.read_csv(os.path.join(filepath, 'edgelist_' + negative_random_sample + '.csv'), header=None)
-        protein_side_feature = []
-        RNA_side_feature = []
+
         if use_side_information:
             protein_side_feature = pd.read_csv(os.path.join(filepath, 'Protein3merfeat.csv')).values
             RNA_side_feature = pd.read_csv(os.path.join(filepath, 'ncRNA4merfeat.csv')).values
             supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
             RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+        else:
+            protein_side_feature = []
+            RNA_side_feature = []
     else:
         NPI_pos_matrix = pd.read_csv(os.path.join(filepath, 'NPI_pos'+str(partition)+'.csv'), header=None).values
         NPI_neg_matrix = pd.read_csv(os.path.join(filepath, "NPI_neg" +str(partition) + ".csv"),
                                      header=None).values
         edgelist = pd.read_csv(os.path.join(filepath, 'edgelist' + str(partition) + '.csv'), header=None)
-        protein_side_feature = []
-        RNA_side_feature = []
+
         if use_side_information:
             protein_side_feature = pd.read_csv(os.path.join(filepath, 'protein3merfeat'+str(partition)+'.csv')).values
             RNA_side_feature = pd.read_csv(os.path.join(filepath, 'rna4merfeat'+str(partition)+'.csv')).values
             supplement = np.zeros((RNA_side_feature.shape[0], 87))  # 通过补零补齐到同一维度
             RNA_side_feature = np.concatenate((RNA_side_feature, supplement), axis=1)
+        else:
+            protein_side_feature = []
+            RNA_side_feature = []
     name = ['index']
     for i in range(1024):
         name.append(i + 1)
@@ -367,7 +372,7 @@ def compare_different_achitectures(filepath, savepath, INI_PATH):
                 NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                 protein_side_feature, RNA_side_feature, edgelist = \
                     load_dataset(dataset=DATA_SET, filepath=filepath,
-                                 identity_feature_dim=structure['NODE_INPUT_DIM'][c],
+                                 identity_feature_dim=structure['NODE_INPUT_DIM'][c],use_side_feature=False,
                                  identity_feature='random', negative_random_sample='sort')
 
                 train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -425,7 +430,7 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
                         # random/one hot +side_information
                         NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                         protein_side_feature, RNA_side_feature, edgelist = \
-                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,
+                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,use_side_feature=True,
                                          identity_feature=k, negative_random_sample=i)
 
                         train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -445,7 +450,7 @@ def compare_different_combinations(filepath, savepath, INI_PATH):
                         # random/one hot
                         NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                         protein_side_feature, RNA_side_feature, edgelist = \
-                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,
+                            load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=NODE_INPUT_DIM,use_side_feature=False,
                                          identity_feature=k, negative_random_sample=i)
 
                         train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -487,7 +492,7 @@ def compare_different_layers(filepath, savepath, INI_PATH):
                 NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                 protein_side_feature, RNA_side_feature, edgelist = \
                     load_dataset(dataset=DATA_SET, filepath=filepath,
-                                 identity_feature_dim=1024,
+                                 identity_feature_dim=1024,use_side_feature=False,
                                  identity_feature='random', negative_random_sample='sort')
 
                 train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -535,12 +540,12 @@ def compare_negative_sample_methods(filepath, savepath, INI_PATH):
                 if negative_generation == 'sort random':
                     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                     protein_side_feature, RNA_side_feature, edgelist = \
-                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
+                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,use_side_feature=False,
                                      identity_feature='random', negative_random_sample='sort_random')
                 else:
                     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
                     protein_side_feature, RNA_side_feature, edgelist = \
-                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
+                        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,use_side_feature=False,
                                      identity_feature='random', negative_random_sample=negative_generation)
 
                 train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
@@ -578,8 +583,9 @@ def single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_r
     WITH_SIDE = "side" if with_side_information else "withoutside"
     NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature, \
     protein_side_feature, RNA_side_feature, edgelist = \
-        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,
+        load_dataset(dataset=DATA_SET, filepath=filepath, identity_feature_dim=1024,use_side_feature=with_side_information,
                      identity_feature='random', negative_random_sample=negative_random_sample)
+
     for i in range(10):
         train(NPI_pos_matrix, NPI_neg_matrix, protein_identity_feature, RNA_identity_feature,
               protein_side_feature,
@@ -673,7 +679,7 @@ if __name__ == "__main__":
     elif method  == "single_dataset_prediction":
         single_dataset_prediction(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, layers, with_side_information)
     elif method == 'timeAnalysis':
-        timeAnalysis(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, 1, False)
+        timeAnalysis(filepath, savepath, INI_PATH, DATA_SET, negative_random_sample, 1, with_side_information=False)
     end = time.time()
     print("total {} seconds".format(end - start))
 
