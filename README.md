@@ -30,6 +30,29 @@ The meanings of parameters:
 
 For 'compare_different_combinations', 'compare_different_layers', and 'compare_negative_sample_methods', the parameters are default and no additional input is required.
 
+## Hyper-parameters of NPI-RGCNAE
+We used different hyper-parameters on different datasets and listed them as follows:
+|Dataset|Dropout ratio  |Initial learning rate|Weight decay|step_size|γ|Epochs|
+|--|--|--|--|--|--|--|
+|RPI2241|	0.1|	0.0007|	0.001|	50|	0.7|	25|
+|RPI2241_random|	0.1|	0.0007|	0.001|	50|	0.7|	25|
+|RPI2241_sort_random|	0.1|	0.0007|	0.001|	50|	0.7|	25|
+|RPI369|	0.3|	0.0007|	0.001|	50|	0.7|	50|
+|RPI369_random|	0.8|	0.0007|	0.07|	50|	0.7|	50|
+RPI369_sort_random|	0.3|	0.0007|	0.001|	50|	0.7|	50|
+NPInter10412|	0.1|	0.001|	0.001|	10|	0.7|	30|
+NPInter10412_random|	0.1|	0.001|	0.001|	10|	0.7|	30|
+NPInter10412_sort_random|	0.1|	0.001|	0.001|	10|	0.7|	30|
+NPInter10412_20%|	0.1|	0.0007|	0.001|	50|	0.7|	25|
+NPInter10412_40%|	0.1|	0.001|	0.001|	20|	0.7|	50|
+NPInter10412_60%|	0.1|	0.003|	0.001|	30|	0.7|	50|
+NPInter10412_80%|	0.1|	0.003|	0.001|	30|	0.7|	50|
+RPI7317|	0.1|	0.003|	0.001|	30|	0.7|	50|
+RPI7317_random|	0.1|	0.003|	0.001|	30|	0.7|	50|
+RPI7317_sort_random|	0.1|	0.003|	0.001|	30|	0.7|	50|
+NPInter4158|	0.1|	0.001|	0.001|	20|	0.7|	50|
+We have written these hyper-parameters in the configuration file `'dataset_settings.ini`'.
+
 
 
 
