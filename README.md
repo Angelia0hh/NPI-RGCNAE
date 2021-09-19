@@ -51,6 +51,7 @@ RPI7317|	0.1|	0.003|	0.001|	30|	0.7|	50|
 RPI7317_random|	0.1|	0.003|	0.001|	30|	0.7|	50|
 RPI7317_sort_random|	0.1|	0.003|	0.001|	30|	0.7|	50|
 NPInter4158|	0.1|	0.001|	0.001|	20|	0.7|	50|
+
 We have written these hyper-parameters in the configuration file `'dataset_settings.ini`'.
 
 
