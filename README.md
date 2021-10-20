@@ -1,5 +1,5 @@
 # NPI-RGCNAE
-  In this work, we used Relational Graph Convolutional 		Network Auto-Encoder(RGCNAE) to predict the interactions between ncRNA and protein.
+  In this work, we used Relational Graph Convolutional 		Network Auto-Encoder(RGCNAE) to predict the interactions between ncRNA and protein [1].
   Under the `'data'` folder, there are two folders `'raw_data'` and `'generated_data'`, which provide the raw dataset and the data generated for our method, respectively.
   `'src/dataset_settings.ini'` is a parameter configuration file for each dataset.
 # How to run
@@ -54,6 +54,7 @@ NPInter4158|	0.1|	0.001|	0.001|	20|	0.7|	50|
 
 We have written these hyper-parameters in the configuration file `'dataset_settings.ini`'.
 
-
-
+# Citation 
+[1] Han Yu, Zi-Ang Shen, Pu-Feng Du, NPI-RGCNAE: Fast predicting ncRNA-protein interactions using the Relational Graph Convolutional Network Auto-Encoder, 
+IEEE Journal of Biomedical and Health Informatics (Accepted)
 
